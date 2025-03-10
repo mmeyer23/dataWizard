@@ -45,15 +45,15 @@ describe('DataRequest', () => {
     });
 
     fireEvent.change(
-      screen.getByLabelText(/Description of table, columns, and number of rows/i),
+      screen.getByLabelText(
+        /Description of table, columns, and number of rows/i
+      ),
       {
         target: { value: 'I am asking for data' },
       }
     );
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /SUBMIT TO YOUR AI OVERLORDS/i })
-    );
+    fireEvent.click(screen.getByRole('button', { name: /POPULATE DATABASE/i }));
 
     const errorMessage = await screen.findByText(/Great error message/i);
     expect(errorMessage).toBeInTheDocument();
@@ -67,11 +67,8 @@ describe('DataRequest', () => {
         postgreSqlUri: 'great test uri',
         naturalLanguageQuery: 'I am asking for data',
       }),
-
-    })
-
-
-  })
+    });
+  });
   test('state changes to loading on button click and back upon completion of request', async () => {
     render(<DataRequest />);
 
@@ -80,14 +77,14 @@ describe('DataRequest', () => {
     });
 
     fireEvent.change(
-      screen.getByLabelText(/Description of table, columns, and number of rows/i),
+      screen.getByLabelText(
+        /Description of table, columns, and number of rows/i
+      ),
       {
         target: { value: 'I am asking for data' },
       }
     );
-    fireEvent.click(
-      screen.getByRole('button', { name: /SUBMIT TO YOUR AI OVERLORDS/i })
-    );
+    fireEvent.click(screen.getByRole('button', { name: /POPULATE DATABASE/i }));
 
     expect(
       screen.getByRole('button', {
@@ -98,8 +95,6 @@ describe('DataRequest', () => {
     await waitFor(() => screen.getByText('Query was successful'));
 
     expect(screen.getByText('Query was successful')).toBeInTheDocument();
-    expect(screen.getByRole('button')).toHaveTextContent(
-      'SUBMIT TO YOUR AI OVERLORDS'
-    );
+    expect(screen.getByRole('button')).toHaveTextContent('POPULATE DATABASE');
   });
-})
+});

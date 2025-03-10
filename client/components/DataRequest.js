@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { TextField, Button, Typography, Container } from '@mui/material';
+import { TextField, Button, Typography, Container, Box } from '@mui/material';
 import { errorMonitor } from 'events';
+import dataWizardLogo from '../../public/assets/dataWizardLogo.png';
 
 const DataRequest = () => {
-  const [postgreSqlUri, setPostgreSqlUri] = useState(''); // uri for postgreSql db to be input by user
-  const [naturalLanguageQuery, setNaturalLanguageQuery] = useState(''); // query text to be input by user
-  const [loading, setLoading] = useState(false); // boolean that will be set to true when the request is being made
-  const [error, setError] = useState(''); // error message to be displayed if request fails
-  const [serverResponse, setServerResponse] = useState(''); // response from server to be displayed to user
+  const [postgreSqlUri, setPostgreSqlUri] = useState('');
+  const [naturalLanguageQuery, setNaturalLanguageQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [serverResponse, setServerResponse] = useState('');
 
   const handleSubmit = async () => {
-    // should also check if postgres uri and request text are not empty
     setLoading(true);
     try {
       const response = await fetch('/api/query', {
@@ -22,7 +22,7 @@ const DataRequest = () => {
       });
       const responseData = await response.json();
       if (!responseData.ok) {
-        setError(responseData)
+        setError(responseData);
       } else {
         setServerResponse(responseData);
       }
@@ -35,79 +35,157 @@ const DataRequest = () => {
 
   return (
     <Container
-      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #2b2233, #2c3d50)',
+        height: '100vh',
+        padding: 4,
+        color: '#fff',
+      }}
     >
+      <img
+        src={dataWizardLogo}
+        alt='Data Wizard Logo'
+        style={{
+          width: '200px',
+          height: 'auto',
+          marginBottom: '20px',
+        }}
+      />
+
       <Typography
         variant='h1'
         sx={{
-          color: 'rgb(10, 10,10)',
           marginTop: 3,
-          marginBottom: 2,
-          fontSize: 30,
+          marginBottom: 5,
+          fontSize: 36,
+          fontFamily: "'Poppins', sans-serif",
+          textAlign: 'center',
+          color: '#fff',
         }}
       >
         Data Wizard
       </Typography>
-      <TextField
-        fullWidth
-        multiline
-        sx={{ marginTop: 1, marginBottom: 1 }}
-        id='postgreSqlUri'
-        label='Enter postgreSql URI'
-        variant='outlined'
-        onChange={(e) => setPostgreSqlUri(e.target.value)}
-      />
-      <TextField
-        onChange={(e) => setNaturalLanguageQuery(e.target.value)}
-        fullWidth
-        multiline
-        minRows={5}
-        sx={{ marginBottom: 1 }}
-        id='naturalLanguageQuery'
-        label='Description of table, columns, and number of rows'
-        variant='outlined'
-      />
-      <Button
-        onClick={() => {
-          setError('');
-          handleSubmit();
-        }}
-        variant='contained'
-        sx={{ maxWidth: 1000, marginBottom: 4 }}
-      >
-        {loading ? 'Loading postgreSQL Data' : 'SUBMIT TO YOUR AI OVERLORDS'}
-      </Button>
-      {error.length > 0 ? (
-        <Container
+
+      <Box sx={{ maxWidth: 600, width: '100%' }}>
+        <TextField
+          fullWidth
           sx={{
-            paddingTop: 1,
-            paddingBottom: 1,
-            border: '1px solid black',
-            borderRadius: '4px',
+            marginTop: 2,
+            marginBottom: 5,
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
+            },
+            '& .MuiInputLabel-root': {
+              transition: 'all 0.2s ease',
+              top: '-10px',
+              fontSize: '14px',
+            },
+            '& .MuiInputLabel-root.Mui-focused': {
+              top: '-18px',
+              fontSize: '12px',
+              color: '#53e9ee',
+            },
+          }}
+          id='postgreSqlUri'
+          label='Enter PostgreSQL URI'
+          variant='outlined'
+          onChange={(e) => setPostgreSqlUri(e.target.value)}
+        />
+        <TextField
+          fullWidth
+          multiline
+          minRows={5}
+          sx={{
+            marginBottom: 2,
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
+            },
+            '& .MuiInputLabel-root': {
+              transition: 'all 0.2s ease',
+              top: '-10px',
+              fontSize: '14px',
+            },
+            '& .MuiInputLabel-root.Mui-focused': {
+              top: '-18px',
+              fontSize: '12px',
+              color: '#53e9ee',
+            },
+          }}
+          id='naturalLanguageQuery'
+          label='Description of table, columns, and number of rows'
+          variant='outlined'
+          onChange={(e) => setNaturalLanguageQuery(e.target.value)}
+        />
+
+        <Button
+          onClick={() => {
+            setError('');
+            handleSubmit();
+          }}
+          variant='contained'
+          sx={{
+            width: '100%',
+            backgroundColor: '#53e9ee',
+            '&:hover': {
+              backgroundColor: '#183451',
+            },
+            padding: '12px',
+            borderRadius: '8px',
+            fontSize: '16px',
+            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
           }}
         >
-          <Typography sx={{ color: 'red' }}>{error}</Typography>
-        </Container>
-      ) : null}
-      {serverResponse.length > 0 ? (
+          {loading ? 'Loading PostgreSQL Data...' : 'Populate Database'}
+        </Button>
+      </Box>
+
+      {/* Error Message */}
+      {error.length > 0 && (
         <Container
           sx={{
-            marginTop: 1,
-            paddingTop: 1,
-            paddingBottom: 1,
-            border: '1px solid black',
-            borderRadius: '4px',
+            marginTop: 2,
+            padding: '16px',
+            backgroundColor: '#ffcccc',
+            borderRadius: '8px',
+            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+            width: '100%',
           }}
         >
           <Typography
-            sx={{
-              color: 'rgb(10, 10,10)',
-            }}
+            sx={{ color: '#D32F2F', fontSize: '16px', textAlign: 'center' }}
+          >
+            {error}
+          </Typography>
+        </Container>
+      )}
+
+      {/* Server Response */}
+      {serverResponse.length > 0 && (
+        <Container
+          sx={{
+            marginTop: 2,
+            padding: '16px',
+            backgroundColor: '#e1f7d5',
+            borderRadius: '8px',
+            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+            width: '100%',
+          }}
+        >
+          <Typography
+            sx={{ color: '#388E3C', fontSize: '16px', textAlign: 'center' }}
           >
             {serverResponse}
           </Typography>
         </Container>
-      ) : null}
+      )}
     </Container>
   );
 };
