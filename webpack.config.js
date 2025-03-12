@@ -36,6 +36,7 @@ export default {
             options: {
               name: '[name].[hash].[ext]',
               outputPath: 'images/',
+              publicPath: '/images/',
             },
           },
         ],
@@ -44,7 +45,7 @@ export default {
   },
   devServer: {
     static: {
-      directory: path.join(__dirname, './client'),
+      directory: path.join(__dirname, './public'),
     },
     proxy: [
       {
