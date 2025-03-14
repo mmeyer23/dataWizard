@@ -134,13 +134,23 @@ const DataRequest = () => {
           sx={{
             width: '100%',
             backgroundColor: '#53e9ee',
-            '&:hover': {
-              backgroundColor: '#183451',
-            },
             padding: '12px',
             borderRadius: '8px',
             fontSize: '16px',
             boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              backgroundColor: '#183451',
+              transform: 'scale(1.05)',
+              boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.2)',
+            },
+            '&:active': {
+              transform: 'scale(0.98)',
+              boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+            },
+            '&:focus': {
+              outline: 'none',
+            },
           }}
         >
           {loading ? 'Loading PostgreSQL Data...' : 'Populate Database'}

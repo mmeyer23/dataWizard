@@ -60,6 +60,7 @@ export default {
   plugins: [
     new HtmlWebpackPlugin({
       template: './client/index.html',
+      favicon: './public/assets/dataWizardLogo.png',
     }),
   ],
   resolve: {

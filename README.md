@@ -127,7 +127,7 @@ npm run test
 
 ## Contributing
 
-We welcome contributions to make AdventureMatch even better! To contribute:
+We welcome contributions to make DataWizard even better! To contribute:
 
 1. Fork the repository.
 2. Create a new branch for your feature (`git checkout -b feature/your-feature`).
@@ -139,4 +139,4 @@ Please ensure that your changes follow the coding standards, and provide tests w
 
 ## License
 
-AdventureMatch is licensed under the MIT License. See [LICENSE](LICENSE) for more details.
+DataWizard is licensed under the MIT License. See [LICENSE](LICENSE) for more details.
