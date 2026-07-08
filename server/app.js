@@ -1,57 +1,67 @@
 import express from 'express';
 import cors from 'cors';
-import 'dotenv/config';
-import { queryOpenai } from './controllers/openaiController.js';
-import { parseNaturalLanguageQuery } from './controllers/naturalLanguageController.js';
-import { populateDatabase } from './controllers/databaseQueryController.js';
-import { validateDatabaseConnection } from './controllers/databaseConnectionController.js';
+import { validateQueryRequest } from './controllers/requestValidationController.js';
+import {
+  createApiErrorResponse,
+  createQuerySuccessResponse,
+  ERROR_CODES,
+  QUERY_ENDPOINT,
+} from '../shared/apiContracts.js';
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-app.post(
-  '/api/query',
-  parseNaturalLanguageQuery,
-  validateDatabaseConnection,
-  queryOpenai,
-  populateDatabase,
-  (_req, res, _next) => {
-    const rows = res.locals.results?.rows ?? [];
-
-    res.status(200).json({
-      sql: res.locals.databaseQuery[0],
-      rows,
-      rowCount: res.locals.results?.rowCount ?? rows.length,
-      warnings: [],
-    });
+export const createApp = ({ queryOpenai, populateDatabase }) => {
+  if (
+    typeof queryOpenai !== 'function' ||
+    typeof populateDatabase !== 'function'
+  ) {
+    throw new TypeError(
+      'createApp requires queryOpenai and populateDatabase middleware.'
+    );
   }
-);
 
-app.use('*', (req, res) => {
-  res.status(404).send('Page not found');
-});
+  const app = express();
 
-app.use((err, req, res, next) => {
-  const defaultErr = {
-    log: 'Express error handler caught unknown middleware error',
-    status: 500,
-    code: 'INTERNAL_SERVER_ERROR',
-    message: { err: 'An unexpected error occurred.' },
-  };
-  const errorObj = Object.assign({}, defaultErr, err);
-  const message =
-    typeof errorObj.message === 'string'
-      ? errorObj.message
-      : errorObj.message?.err ?? defaultErr.message.err;
+  app.use(cors());
+  app.use(express.json());
 
-  return res.status(errorObj.status).json({
-    error: {
-      code: errorObj.code ?? defaultErr.code,
-      message,
-    },
+  app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
   });
-});
 
-export default app;
+  app.post(
+    QUERY_ENDPOINT,
+    validateQueryRequest,
+    queryOpenai,
+    populateDatabase,
+    (_req, res) => {
+      res.status(200).json(
+        createQuerySuccessResponse({
+          sql: res.locals.databaseQuery[0],
+          results: res.locals.results,
+        })
+      );
+    }
+  );
+
+  app.use('*', (_req, res) => {
+    res.status(404).send('Page not found');
+  });
+
+  app.use((err, _req, res, _next) => {
+    const defaultError = {
+      status: 500,
+      code: ERROR_CODES.internalServerError,
+      message: { err: 'An unexpected error occurred.' },
+    };
+    const error = Object.assign({}, defaultError, err);
+    const message =
+      typeof error.message === 'string'
+        ? error.message
+        : error.message?.err ?? defaultError.message.err;
+
+    return res
+      .status(error.status)
+      .json(createApiErrorResponse(error.code, message));
+  });
+
+  return app;
+};
