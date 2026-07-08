@@ -1,82 +1,87 @@
-import { createQueryOpenai } from './openaiController.js';
+import { createGenerateDatasetPlan } from './openaiController.js';
+import { DatasetPlanError } from '../adapters/openaiDatasetPlanner.js';
 
-const createResponse = () => ({ locals: { naturalLanguageQuery: 'test query' } });
+const plan = {
+  schemaName: 'test_data',
+  tableName: 'tests',
+  columns: [{ name: 'name', type: 'text', nullable: false }],
+  rows: [['Ada']],
+  assumptions: [],
+  warnings: [],
+  sql: 'SELECT 1;',
+  model: 'test-model',
+  promptVersion: 'test-prompt',
+};
 
-describe('createQueryOpenai', () => {
-  it('uses the injected client and prompt', async () => {
-    const create = jest.fn().mockResolvedValue({
-      choices: [
-        {
-          message: {
-            content: '```sql\nSELECT * FROM users;\n```',
-          },
-        },
-      ],
-    });
-    const queryOpenai = createQueryOpenai({
-      openai: { chat: { completions: { create } } },
-      systemPrompt: 'Test system prompt',
-    });
-    const res = createResponse();
+describe('createGenerateDatasetPlan', () => {
+  it('stores a generated plan for downstream middleware', async () => {
+    const planner = { generate: jest.fn().mockResolvedValue(plan) };
+    const middleware = createGenerateDatasetPlan({ planner });
+    const res = { locals: { naturalLanguageQuery: 'Create one test row' } };
     const next = jest.fn();
 
-    await queryOpenai({}, res, next);
+    await middleware({}, res, next);
 
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: [
-          { role: 'system', content: 'Test system prompt' },
-          { role: 'user', content: 'test query' },
-        ],
-      })
-    );
-    expect(res.locals.databaseQuery).toEqual(['SELECT * FROM users;']);
+    expect(planner.generate).toHaveBeenCalledWith('Create one test row');
+    expect(res.locals.datasetPlan).toBe(plan);
+    expect(res.locals.databaseQuery).toEqual(['SELECT 1;']);
     expect(next).toHaveBeenCalledWith();
   });
 
-  it('reports a missing query without calling the client', async () => {
-    const create = jest.fn();
-    const queryOpenai = createQueryOpenai({
-      openai: { chat: { completions: { create } } },
-    });
+  it('rejects missing generation input before calling the planner', async () => {
+    const planner = { generate: jest.fn() };
+    const middleware = createGenerateDatasetPlan({ planner });
     const next = jest.fn();
 
-    await queryOpenai({}, { locals: {} }, next);
+    await middleware({}, { locals: {} }, next);
 
-    expect(create).not.toHaveBeenCalled();
+    expect(planner.generate).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 500 })
+      expect.objectContaining({ code: 'GENERATION_INPUT_UNAVAILABLE' })
     );
   });
 
-  it('forwards provider failures through Express error handling', async () => {
-    const create = jest.fn().mockRejectedValue(new Error('Provider failure'));
-    const queryOpenai = createQueryOpenai({
-      openai: { chat: { completions: { create } } },
-    });
+  it('maps invalid plans to a safe 422 response', async () => {
+    const planner = {
+      generate: jest.fn().mockRejectedValue(
+        new DatasetPlanError('INVALID_DATASET_PLAN', 'Invalid plan')
+      ),
+    };
+    const middleware = createGenerateDatasetPlan({ planner });
     const next = jest.fn();
 
-    await queryOpenai({}, createResponse(), next);
+    await middleware(
+      {},
+      { locals: { naturalLanguageQuery: 'Create data' } },
+      next
+    );
 
     expect(next).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 500,
-        message: { err: 'A server error occured while querying OpenAI' },
+        status: 422,
+        code: 'INVALID_DATASET_PLAN',
       })
     );
   });
 
-  it('rejects a response with no choices', async () => {
-    const create = jest.fn().mockResolvedValue({ choices: [] });
-    const queryOpenai = createQueryOpenai({
-      openai: { chat: { completions: { create } } },
-    });
+  it('maps provider failures to a safe 502 response', async () => {
+    const planner = {
+      generate: jest.fn().mockRejectedValue(new Error('Provider unavailable')),
+    };
+    const middleware = createGenerateDatasetPlan({ planner });
     const next = jest.fn();
 
-    await queryOpenai({}, createResponse(), next);
+    await middleware(
+      {},
+      { locals: { naturalLanguageQuery: 'Create data' } },
+      next
+    );
 
     expect(next).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 500 })
+      expect.objectContaining({
+        status: 502,
+        code: 'AI_GENERATION_FAILED',
+      })
     );
   });
 });

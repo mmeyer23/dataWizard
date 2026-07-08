@@ -11,7 +11,8 @@
   },
   "include": [
     "shared/**/*.js",
-    "server/config.js"
+    "server/config.js",
+    "server/generation/**/*.js"
   ],
   "exclude": [
     "**/*.test.js"

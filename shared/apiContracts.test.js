@@ -52,12 +52,24 @@ describe('query request contract', () => {
 
 describe('API response contract', () => {
   it('creates and recognizes a success response', () => {
+    const plan = {
+      schemaName: 'test_data',
+      tableName: 'tests',
+      columns: [{ name: 'name', type: 'text', nullable: false }],
+      rows: [['Ada']],
+      assumptions: [],
+      warnings: [],
+      model: 'test-model',
+      promptVersion: 'test-prompt',
+    };
     const response = createQuerySuccessResponse({
       sql: 'INSERT INTO tests DEFAULT VALUES;',
       results: { rows: [{ id: 1 }] },
+      plan,
     });
 
     expect(response.rowCount).toBe(1);
+    expect(response.plan).toBe(plan);
     expect(isQuerySuccessResponse(response)).toBe(true);
   });
 
