@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { validateQueryRequest } from './controllers/requestValidationController.js';
+import { validateGeneratedSql } from './controllers/sqlPolicyController.js';
 import {
   createApiErrorResponse,
   createQuerySuccessResponse,
@@ -31,6 +32,7 @@ export const createApp = ({ generateDatasetPlan, populateDatabase }) => {
     QUERY_ENDPOINT,
     validateQueryRequest,
     generateDatasetPlan,
+    validateGeneratedSql,
     populateDatabase,
     (_req, res) => {
       res.status(200).json(
@@ -39,6 +41,7 @@ export const createApp = ({ generateDatasetPlan, populateDatabase }) => {
           results: res.locals.results,
           warnings: res.locals.datasetPlan.warnings,
           plan: res.locals.datasetPlan,
+          validation: res.locals.sqlValidation,
         })
       );
     }
@@ -62,7 +65,7 @@ export const createApp = ({ generateDatasetPlan, populateDatabase }) => {
 
     return res
       .status(error.status)
-      .json(createApiErrorResponse(error.code, message));
+      .json(createApiErrorResponse(error.code, message, error.details));
   });
 
   return app;

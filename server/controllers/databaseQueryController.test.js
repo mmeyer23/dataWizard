@@ -22,6 +22,7 @@ describe('populateDatabase Controller', () => {
     };
     mockRes = {
       locals: {
+        sqlValidation: { ok: true },
         databaseQuery: [
           `CREATE SCHEMA IF NOT EXISTS test_db;
 
@@ -68,15 +69,16 @@ describe('populateDatabase Controller', () => {
     );
   });
 
-  it('should return 400 error if databaseQuery contains any forbiddenKeywords', async () => {
-    mockRes.locals.databaseQuery = ['DROP TABLE test_table'];
+  it('should refuse execution without SQL policy approval', async () => {
+    mockRes.locals.sqlValidation = null;
     await populateDatabase(mockReq, mockRes, mockNext);
     expect(mockNext).toHaveBeenCalledWith(
       expect.objectContaining({
-        code: 'UNSAFE_GENERATED_SQL',
-        status: 400,
+        code: 'SQL_VALIDATION_REQUIRED',
+        status: 500,
       })
     );
+    expect(mockClient.connect).not.toHaveBeenCalled();
   });
   it('should handle errors coming from the database query', async () => {
     mockClient.query.mockRejectedValueOnce(new Error('Database Error'));

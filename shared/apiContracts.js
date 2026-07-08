@@ -22,6 +22,7 @@ export const ERROR_CODES = Object.freeze({
  * @property {number} rowCount
  * @property {string[]} warnings
  * @property {DatasetPlanSummary} plan
+ * @property {SqlValidationSummary} validation
  *
  * @typedef {object} DatasetPlanSummary
  * @property {string} schemaName
@@ -33,9 +34,15 @@ export const ERROR_CODES = Object.freeze({
  * @property {string} model
  * @property {string} promptVersion
  *
+ * @typedef {object} SqlValidationSummary
+ * @property {true} ok
+ * @property {Array<{severity: string, code: string, message: string}>} findings
+ * @property {{statementCount: number, tableCount: number, columnCount: number, rowCount: number}} summary
+ *
  * @typedef {object} ApiError
  * @property {string} code
  * @property {string} message
+ * @property {unknown} [details]
  *
  * @typedef {{ error: ApiError }} ApiErrorResponse
  */
@@ -101,6 +108,7 @@ export const createQueryRequest = (request) => ({
  * @param {{ rows?: unknown[], rowCount?: number } | undefined} value.results
  * @param {string[]} [value.warnings]
  * @param {DatasetPlanSummary} value.plan
+ * @param {SqlValidationSummary} value.validation
  * @returns {QuerySuccessResponse}
  */
 export const createQuerySuccessResponse = ({
@@ -108,6 +116,7 @@ export const createQuerySuccessResponse = ({
   results,
   warnings = [],
   plan,
+  validation,
 }) => {
   const rows = results?.rows ?? [];
 
@@ -117,6 +126,7 @@ export const createQuerySuccessResponse = ({
     rowCount: results?.rowCount ?? rows.length,
     warnings,
     plan,
+    validation,
   };
 };
 
@@ -135,7 +145,21 @@ export const isQuerySuccessResponse = (value) => {
     Number.isInteger(response.rowCount) &&
     Array.isArray(response.warnings) &&
     response.warnings.every((warning) => typeof warning === 'string') &&
-    isDatasetPlanSummary(response.plan)
+    isDatasetPlanSummary(response.plan) &&
+    isSqlValidationSummary(response.validation)
+  );
+};
+
+/** @param {unknown} value */
+const isSqlValidationSummary = (value) => {
+  if (!value || typeof value !== 'object') return false;
+
+  const validation = /** @type {Record<string, unknown>} */ (value);
+  return (
+    validation.ok === true &&
+    Array.isArray(validation.findings) &&
+    Boolean(validation.summary) &&
+    typeof validation.summary === 'object'
   );
 };
 
@@ -159,10 +183,15 @@ const isDatasetPlanSummary = (value) => {
 /**
  * @param {string} code
  * @param {string} message
+ * @param {unknown} [details]
  * @returns {ApiErrorResponse}
  */
-export const createApiErrorResponse = (code, message) => ({
-  error: { code, message },
+export const createApiErrorResponse = (code, message, details) => ({
+  error: {
+    code,
+    message,
+    ...(details === undefined ? {} : { details }),
+  },
 });
 
 /**
