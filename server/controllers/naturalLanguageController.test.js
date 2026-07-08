@@ -17,53 +17,58 @@ describe('parseNaturalLanguageQuery', () => {
   it('should call next with an error if naturalLanguageQuery is not provided', async () => {
     await parseNaturalLanguageQuery(req, res, next);
 
-    expect(next).toHaveBeenCalledWith({
-      log: 'parseNaturalLanguageQuery: Natural Language Query not provided',
-      status: 400,
-      message: { err: 'An error occurred while parsing the user query' },
-    });
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'NATURAL_LANGUAGE_QUERY_REQUIRED',
+        status: 400,
+      })
+    );
   });
   it('should call next with an error if request body is undefined', async () => {
     req.body = undefined
     await parseNaturalLanguageQuery(req, res, next);
 
-    expect(next).toHaveBeenCalledWith({
-      log: 'parseNaturalLanguageQuery: Request body is undefined',
-      status: 400,
-      message: { err: 'An error occurred while parsing the user query' },
-    });
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'INVALID_REQUEST_BODY',
+        status: 400,
+      })
+    );
   });
   it('should call next with an error if request body is null', async () => {
     req.body = null
     await parseNaturalLanguageQuery(req, res, next);
 
-    expect(next).toHaveBeenCalledWith({
-      log: 'parseNaturalLanguageQuery: Request body is null',
-      status: 400,
-      message: { err: 'An error occurred while parsing the user query' },
-    });
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'INVALID_REQUEST_BODY',
+        status: 400,
+      })
+    );
   });
   it('should call next with an error if naturalLanguageQuery is not a string', async () => {
     req.body.naturalLanguageQuery = 123;
 
     await parseNaturalLanguageQuery(req, res, next);
 
-    expect(next).toHaveBeenCalledWith({
-      log: 'parseNaturalLanguageQuery: Natural Language Query is not a string',
-      status: 400,
-      message: { err: 'An error occurred while parsing the user query' },
-    });
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'INVALID_NATURAL_LANGUAGE_QUERY',
+        status: 400,
+      })
+    );
   });
   it('should call next with an error if naturalLanguageQuery is an empty string', async () => {
     req.body.naturalLanguageQuery = '';
 
     await parseNaturalLanguageQuery(req, res, next);
 
-    expect(next).toHaveBeenCalledWith({
-      log: 'parseNaturalLanguageQuery: Natural Language Query is an empty string',
-      status: 400,
-      message: { err: 'An error occurred while parsing the user query' },
-    });
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'NATURAL_LANGUAGE_QUERY_REQUIRED',
+        status: 400,
+      })
+    );
   });
   it('should work for very long strings', async () => {
     req.body.naturalLanguageQuery = 'abcde'.repeat(1000);

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { TextField, Button, Typography, Container, Box } from '@mui/material';
-import { errorMonitor } from 'events';
 import dataWizardLogo from '../../public/assets/dataWizardLogo.png';
 
 const DataRequest = () => {
@@ -8,10 +7,13 @@ const DataRequest = () => {
   const [naturalLanguageQuery, setNaturalLanguageQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [serverResponse, setServerResponse] = useState('');
+  const [serverResponse, setServerResponse] = useState(null);
 
   const handleSubmit = async () => {
+    setError('');
+    setServerResponse(null);
     setLoading(true);
+
     try {
       const response = await fetch('/api/query', {
         method: 'POST',
@@ -21,11 +23,15 @@ const DataRequest = () => {
         body: JSON.stringify({ postgreSqlUri, naturalLanguageQuery }),
       });
       const responseData = await response.json();
-      if (!responseData.ok) {
-        setError(responseData);
-      } else {
-        setServerResponse(responseData);
+
+      if (!response.ok) {
+        setError(
+          responseData.error?.message ?? 'The request could not be completed.'
+        );
+        return;
       }
+
+      setServerResponse(responseData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -126,10 +132,12 @@ const DataRequest = () => {
         />
 
         <Button
-          onClick={() => {
-            setError('');
-            handleSubmit();
-          }}
+          onClick={handleSubmit}
+          disabled={
+            loading ||
+            postgreSqlUri.trim().length === 0 ||
+            naturalLanguageQuery.trim().length === 0
+          }
           variant='contained'
           sx={{
             width: '100%',
@@ -178,7 +186,7 @@ const DataRequest = () => {
       )}
 
       {/* Server Response */}
-      {serverResponse.length > 0 && (
+      {serverResponse && (
         <Container
           sx={{
             marginTop: 2,
@@ -192,8 +200,17 @@ const DataRequest = () => {
           <Typography
             sx={{ color: '#388E3C', fontSize: '16px', textAlign: 'center' }}
           >
-            {serverResponse}
+            Successfully inserted {serverResponse.rowCount} row
+            {serverResponse.rowCount === 1 ? '' : 's'}.
           </Typography>
+          {serverResponse.rows.length > 0 && (
+            <Box
+              component='pre'
+              sx={{ color: '#1b5e20', overflowX: 'auto', whiteSpace: 'pre-wrap' }}
+            >
+              {JSON.stringify(serverResponse.rows, null, 2)}
+            </Box>
+          )}
         </Container>
       )}
     </Container>

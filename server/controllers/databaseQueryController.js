@@ -5,8 +5,10 @@ export const populateDatabase = async (req, res, next) => {
   const pgUri = req.body.postgreSqlUri;
   if (!pgUri) {
     return next({
-      message: 'No database URI provided in the request body.',
+      log: 'populateDatabase: PostgreSQL URI not provided',
       status: 400,
+      code: 'POSTGRESQL_URI_REQUIRED',
+      message: { err: 'A PostgreSQL connection URI is required.' },
     });
   }
   const client = new Client({
@@ -17,8 +19,10 @@ export const populateDatabase = async (req, res, next) => {
   // console.log('database query: ', databaseQuery[0])
   if (!databaseQuery) {
     return next({
-      message: 'No query string available in the response locals',
-      status: 400,
+      log: 'populateDatabase: Generated SQL not available',
+      status: 500,
+      code: 'GENERATED_SQL_UNAVAILABLE',
+      message: { err: 'No generated SQL was available for execution.' },
     });
   }
   //Safety check to make sure the AI generated query doesn't have dangerous SQL query keywords
@@ -37,8 +41,10 @@ export const populateDatabase = async (req, res, next) => {
   );
   if (containsForbiddenKeyword) {
     return next({
-      message: 'The generated SQL query contains forbidden keywords.', //could we mark which?
+      log: 'populateDatabase: Generated SQL contains a forbidden keyword',
       status: 400,
+      code: 'UNSAFE_GENERATED_SQL',
+      message: { err: 'The generated SQL did not pass validation.' },
     });
   }
 
@@ -54,8 +60,10 @@ export const populateDatabase = async (req, res, next) => {
   } catch (error) {
     await client.query('ROLLBACK');
     return next({
-      message: `Error occurred during database query: ${error.message}`,
+      log: `populateDatabase: ${error.message}`,
       status: 500,
+      code: 'DATABASE_QUERY_FAILED',
+      message: { err: 'The database query could not be completed.' },
     });
   } finally {
     await client.end();
