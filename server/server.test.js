@@ -1,29 +1,27 @@
-import request from 'supertest';
-import { app, PORT, startServer } from './server.js';
+import { startApplication, startServer } from './server.js';
 
-let server;
+describe('startServer', () => {
+  it('starts the provided app on the configured port', () => {
+    const server = { close: jest.fn() };
+    const listen = jest.fn((_port, callback) => {
+      callback();
+      return server;
+    });
+    const logger = { log: jest.fn() };
 
-beforeAll(() => {
-  console.log = jest.fn();
-  server = startServer();
+    expect(startServer({ app: { listen }, port: 4242, logger })).toBe(server);
+    expect(listen).toHaveBeenCalledWith(4242, expect.any(Function));
+    expect(logger.log).toHaveBeenCalledWith('Server listening on port: 4242');
+  });
 });
 
-afterAll(() => {
-  server.close();
-});
+describe('startApplication', () => {
+  it('validates configuration before constructing external clients', () => {
+    const OpenAIClient = jest.fn();
 
-describe('Server', () => {
-  it('should respond to get query to /test endpoint with "Server is running"', async () => {
-    const response = await request(app).get('/test');
-    expect(response.status).toBe(200); // Check for a successful response
-    expect(response.text).toBe('Server is running'); // Ensure the correct text is returned
-  });
-
-  it('should respond with the correct message when the server starts', async () => {
-    await request(app).get('/test');
-    expect(console.log).toHaveBeenCalledWith('Server listening on port: 3000'); // Ensure the correct text is returned
-  });
-  it('should use a port number of 3000', async () => {
-    expect(PORT).toBe(3000);
+    expect(() => startApplication({ env: {}, OpenAIClient })).toThrow(
+      'OPENAI_API_KEY is required.'
+    );
+    expect(OpenAIClient).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { TextField, Button, Typography, Container, Box } from '@mui/material';
 import dataWizardLogo from '../../public/assets/dataWizardLogo.png';
+import {
+  createQueryRequest,
+  getApiErrorMessage,
+  isQuerySuccessResponse,
+  QUERY_ENDPOINT,
+} from '../../shared/apiContracts.js';
 
 const DataRequest = () => {
   const [postgreSqlUri, setPostgreSqlUri] = useState('');
@@ -15,19 +21,29 @@ const DataRequest = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/query', {
+      const response = await fetch(QUERY_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ postgreSqlUri, naturalLanguageQuery }),
+        body: JSON.stringify(
+          createQueryRequest({ postgreSqlUri, naturalLanguageQuery })
+        ),
       });
       const responseData = await response.json();
 
       if (!response.ok) {
         setError(
-          responseData.error?.message ?? 'The request could not be completed.'
+          getApiErrorMessage(
+            responseData,
+            'The request could not be completed.'
+          )
         );
+        return;
+      }
+
+      if (!isQuerySuccessResponse(responseData)) {
+        setError('The server returned an invalid response.');
         return;
       }
 

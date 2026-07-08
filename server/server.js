@@ -1,18 +1,26 @@
-import app from './app.js';
-const PORT = 3000;
+import 'dotenv/config';
+import OpenAI from 'openai';
+import { createApp } from './app.js';
+import { loadConfig } from './config.js';
+import { createQueryOpenai } from './controllers/openaiController.js';
+import { populateDatabase } from './controllers/databaseQueryController.js';
 
-// Route definition
-app.get('/test', (_req, res) => {
-  res.status(200).send('Server is running');
-});
-
-export const startServer = () => {
-  return app.listen(PORT, () => {
-    console.log(`Server listening on port: ${PORT}`);
+export const startServer = ({ app, port, logger = console }) =>
+  app.listen(port, () => {
+    logger.log(`Server listening on port: ${port}`);
   });
+
+export const startApplication = ({
+  env = process.env,
+  logger = console,
+  OpenAIClient = OpenAI,
+} = {}) => {
+  const config = loadConfig(env);
+  const openai = new OpenAIClient({ apiKey: config.openAiApiKey });
+  const app = createApp({
+    queryOpenai: createQueryOpenai({ openai }),
+    populateDatabase,
+  });
+
+  return startServer({ app, port: config.port, logger });
 };
-
-startServer();
-
-// Export the app for testing purposes
-export { app, PORT };

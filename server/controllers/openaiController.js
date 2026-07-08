@@ -1,20 +1,10 @@
-import OpenAI from 'openai';
 import prompt from '../prompt.js';
 
-const apiKey = process.env.OPENAI_API_KEY;
-
-if (!apiKey) {
-  throw new Error(
-    'The OPENAI_API_KEY environment variable is missing or empty.'
-  );
-}
-
-const openai = new OpenAI({
-  apiKey: apiKey,
-});
-
-export const queryOpenai = async (req, res, next) => {
-  console.log('Querying OpenAI!');
+export const createQueryOpenai = ({ openai, systemPrompt = prompt }) => async (
+  _req,
+  res,
+  next
+) => {
   const { naturalLanguageQuery } = res.locals;
   if (!naturalLanguageQuery) {
     const error = {
@@ -31,13 +21,10 @@ export const queryOpenai = async (req, res, next) => {
       temperature: 1,
       n: 1,
       messages: [
-        { role: 'system', content: prompt },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: naturalLanguageQuery },
       ],
     });
-    console.log('create method called with:', openai.chat.completions.create);
-
-    console.log('create: ', openai.chat.completions.create);
     if (completion.choices.length === 0) {
       const error = {
         log: 'OpenAI did not recieve a completion',
@@ -47,7 +34,6 @@ export const queryOpenai = async (req, res, next) => {
       return next(error);
     }
     res.locals.aiQueryString = completion.choices[0].message.content;
-    console.log(completion.choices[0].message.content);
 
     const unModifiedQuery =
       completion.choices.map((choice) => choice.message.content || '') ||
@@ -59,23 +45,12 @@ export const queryOpenai = async (req, res, next) => {
       )
       .filter((sqlQuery) => sqlQuery.length > 0);
 
-    console.log(`${SQLMarkdownMatch.length} queries from openai`);
     // save the sql statement, or the whole response if the sql part couldn't be found
     res.locals.databaseQuery = SQLMarkdownMatch || [
       unModifiedQuery || 'no Query',
     ];
-    console.log(res.locals.databaseQuery);
-
-    if (!SQLMarkdownMatch)
-      console.log(
-        'COULD NOT EXTRACT SQL FROM OPENAI RESPONSE: ',
-        unModifiedQuery
-      );
-
-    console.log('Exiting queryOpenai');
     return next();
   } catch (error) {
-    console.log('within the catch error block', error);
     return next({
       log: 'openaiController.queryOpenAi: ' + error,
       status: 500,
