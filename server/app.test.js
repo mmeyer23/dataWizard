@@ -45,6 +45,7 @@ jest.mock('./controllers/openaiController', () => ({
 jest.mock('./controllers/databaseQueryController', () => ({
   populateDatabase: jest.fn((req, res, next) => {
     res.locals.results = {
+      rowCount: 1,
       rows: [
         {
           id: 1,
@@ -72,7 +73,40 @@ describe('POST /api/query', () => {
       )
       .set('Content-Type', 'application/json');
     expect(response.status).toBe(200);
-    expect(response.body).toEqual([mockQuery]);
+    expect(response.body).toEqual({
+      sql: mockQuery,
+      rows: [
+        {
+          id: 1,
+          title: 'Test1',
+          year: 2010,
+          genre: 'Sci-Fi',
+          director: 'Christopher Nolan',
+        },
+      ],
+      rowCount: 1,
+      warnings: [],
+    });
+  });
+
+  it('returns a consistent error when the PostgreSQL URI is missing', async () => {
+    const response = await request(app).post('/api/query').send({
+      naturalLanguageQuery: 'Create a table of movies',
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: {
+        code: 'POSTGRESQL_URI_REQUIRED',
+        message: 'A PostgreSQL connection URI is required.',
+      },
+    });
+  });
+
+  it('rejects unsupported methods on the query endpoint', async () => {
+    const response = await request(app).get('/api/query');
+
+    expect(response.status).toBe(404);
   });
 });
 describe('404 route', () => {

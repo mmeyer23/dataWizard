@@ -49,36 +49,44 @@ describe('populateDatabase Controller', () => {
   it('should return 400 error if there is nothing in req.body.postreSqlUri', async () => {
     mockReq.body.postgreSqlUri = null;
     await populateDatabase(mockReq, mockRes, mockNext);
-    expect(mockNext).toHaveBeenCalledWith({
-      message: 'No database URI provided in the request body.',
-      status: 400,
-    });
+    expect(mockNext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'POSTGRESQL_URI_REQUIRED',
+        status: 400,
+      })
+    );
   });
 
   it('should return 400 error if res.locals does not contain databaseQuery', async () => {
     mockRes.locals.databaseQuery = null;
     await populateDatabase(mockReq, mockRes, mockNext);
-    expect(mockNext).toHaveBeenCalledWith({
-      message: 'No query string available in the response locals',
-      status: 400,
-    });
+    expect(mockNext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'GENERATED_SQL_UNAVAILABLE',
+        status: 500,
+      })
+    );
   });
 
   it('should return 400 error if databaseQuery contains any forbiddenKeywords', async () => {
     mockRes.locals.databaseQuery = ['DROP TABLE test_table'];
     await populateDatabase(mockReq, mockRes, mockNext);
-    expect(mockNext).toHaveBeenCalledWith({
-      message: 'The generated SQL query contains forbidden keywords.',
-      status: 400,
-    });
+    expect(mockNext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'UNSAFE_GENERATED_SQL',
+        status: 400,
+      })
+    );
   });
   it('should handle errors coming from the database query', async () => {
     mockClient.query.mockRejectedValueOnce(new Error('Database Error'));
     await populateDatabase(mockReq, mockRes, mockNext);
-    expect(mockNext).toHaveBeenCalledWith({
-      message: `Error occurred during database query: Database Error`,
-      status: 500,
-    });
+    expect(mockNext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'DATABASE_QUERY_FAILED',
+        status: 500,
+      })
+    );
   });
   it('should call connect, query, and end on the client', async () => {
     await populateDatabase(mockReq, mockRes, mockNext);
