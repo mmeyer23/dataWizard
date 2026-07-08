@@ -19,6 +19,16 @@ global.fetch = jest.fn(() =>
         rows: [{ id: 1 }],
         rowCount: 1,
         warnings: [],
+        plan: {
+          schemaName: 'test_data',
+          tableName: 'tests',
+          columns: [{ name: 'name', type: 'text', nullable: false }],
+          rows: [['Ada']],
+          assumptions: [],
+          warnings: [],
+          model: 'test-model',
+          promptVersion: 'test-prompt',
+        },
       }),
   })
 );

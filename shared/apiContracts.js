@@ -21,6 +21,17 @@ export const ERROR_CODES = Object.freeze({
  * @property {unknown[]} rows
  * @property {number} rowCount
  * @property {string[]} warnings
+ * @property {DatasetPlanSummary} plan
+ *
+ * @typedef {object} DatasetPlanSummary
+ * @property {string} schemaName
+ * @property {string} tableName
+ * @property {Array<{name: string, type: string, nullable: boolean}>} columns
+ * @property {Array<Array<string | number | boolean | null>>} rows
+ * @property {string[]} assumptions
+ * @property {string[]} warnings
+ * @property {string} model
+ * @property {string} promptVersion
  *
  * @typedef {object} ApiError
  * @property {string} code
@@ -89,12 +100,14 @@ export const createQueryRequest = (request) => ({
  * @param {string} value.sql
  * @param {{ rows?: unknown[], rowCount?: number } | undefined} value.results
  * @param {string[]} [value.warnings]
+ * @param {DatasetPlanSummary} value.plan
  * @returns {QuerySuccessResponse}
  */
 export const createQuerySuccessResponse = ({
   sql,
   results,
   warnings = [],
+  plan,
 }) => {
   const rows = results?.rows ?? [];
 
@@ -103,6 +116,7 @@ export const createQuerySuccessResponse = ({
     rows,
     rowCount: results?.rowCount ?? rows.length,
     warnings,
+    plan,
   };
 };
 
@@ -120,7 +134,25 @@ export const isQuerySuccessResponse = (value) => {
     Array.isArray(response.rows) &&
     Number.isInteger(response.rowCount) &&
     Array.isArray(response.warnings) &&
-    response.warnings.every((warning) => typeof warning === 'string')
+    response.warnings.every((warning) => typeof warning === 'string') &&
+    isDatasetPlanSummary(response.plan)
+  );
+};
+
+/** @param {unknown} value */
+const isDatasetPlanSummary = (value) => {
+  if (!value || typeof value !== 'object') return false;
+
+  const plan = /** @type {Record<string, unknown>} */ (value);
+  return (
+    typeof plan.schemaName === 'string' &&
+    typeof plan.tableName === 'string' &&
+    Array.isArray(plan.columns) &&
+    Array.isArray(plan.rows) &&
+    Array.isArray(plan.assumptions) &&
+    Array.isArray(plan.warnings) &&
+    typeof plan.model === 'string' &&
+    typeof plan.promptVersion === 'string'
   );
 };
 

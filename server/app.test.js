@@ -3,8 +3,20 @@ import { createApp } from './app.js';
 
 const mockQuery = 'INSERT INTO tests DEFAULT VALUES RETURNING *;';
 const mockRows = [{ id: 1 }];
+const mockPlan = {
+  schemaName: 'test_data',
+  tableName: 'tests',
+  columns: [{ name: 'name', type: 'text', nullable: false }],
+  rows: [['Ada']],
+  assumptions: [],
+  warnings: [],
+  sql: mockQuery,
+  model: 'test-model',
+  promptVersion: 'test-prompt',
+};
 
-const queryOpenai = (_req, res, next) => {
+const generateDatasetPlan = (_req, res, next) => {
+  res.locals.datasetPlan = mockPlan;
   res.locals.databaseQuery = [mockQuery];
   next();
 };
@@ -14,12 +26,12 @@ const populateDatabase = (_req, res, next) => {
   next();
 };
 
-const app = createApp({ queryOpenai, populateDatabase });
+const app = createApp({ generateDatasetPlan, populateDatabase });
 
 describe('createApp', () => {
   it('requires both external middleware dependencies', () => {
     expect(() => createApp({})).toThrow(
-      'createApp requires queryOpenai and populateDatabase middleware.'
+      'createApp requires generateDatasetPlan and populateDatabase middleware.'
     );
   });
 });
@@ -37,14 +49,15 @@ describe('POST /api/query', () => {
       rows: mockRows,
       rowCount: 1,
       warnings: [],
+      plan: mockPlan,
     });
   });
 
   it('validates requests before invoking external middleware', async () => {
-    const queryOpenaiSpy = jest.fn(queryOpenai);
+    const generationSpy = jest.fn(generateDatasetPlan);
     const databaseSpy = jest.fn(populateDatabase);
     const validationApp = createApp({
-      queryOpenai: queryOpenaiSpy,
+      generateDatasetPlan: generationSpy,
       populateDatabase: databaseSpy,
     });
 
@@ -54,7 +67,7 @@ describe('POST /api/query', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('POSTGRESQL_URI_REQUIRED');
-    expect(queryOpenaiSpy).not.toHaveBeenCalled();
+    expect(generationSpy).not.toHaveBeenCalled();
     expect(databaseSpy).not.toHaveBeenCalled();
   });
 

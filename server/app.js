@@ -8,13 +8,13 @@ import {
   QUERY_ENDPOINT,
 } from '../shared/apiContracts.js';
 
-export const createApp = ({ queryOpenai, populateDatabase }) => {
+export const createApp = ({ generateDatasetPlan, populateDatabase }) => {
   if (
-    typeof queryOpenai !== 'function' ||
+    typeof generateDatasetPlan !== 'function' ||
     typeof populateDatabase !== 'function'
   ) {
     throw new TypeError(
-      'createApp requires queryOpenai and populateDatabase middleware.'
+      'createApp requires generateDatasetPlan and populateDatabase middleware.'
     );
   }
 
@@ -30,13 +30,15 @@ export const createApp = ({ queryOpenai, populateDatabase }) => {
   app.post(
     QUERY_ENDPOINT,
     validateQueryRequest,
-    queryOpenai,
+    generateDatasetPlan,
     populateDatabase,
     (_req, res) => {
       res.status(200).json(
         createQuerySuccessResponse({
           sql: res.locals.databaseQuery[0],
           results: res.locals.results,
+          warnings: res.locals.datasetPlan.warnings,
+          plan: res.locals.datasetPlan,
         })
       );
     }

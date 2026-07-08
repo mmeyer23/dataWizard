@@ -2,8 +2,9 @@ import 'dotenv/config';
 import OpenAI from 'openai';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
-import { createQueryOpenai } from './controllers/openaiController.js';
+import { createGenerateDatasetPlan } from './controllers/openaiController.js';
 import { populateDatabase } from './controllers/databaseQueryController.js';
+import { createOpenAiDatasetPlanner } from './adapters/openaiDatasetPlanner.js';
 
 export const startServer = ({ app, port, logger = console }) =>
   app.listen(port, () => {
@@ -17,8 +18,9 @@ export const startApplication = ({
 } = {}) => {
   const config = loadConfig(env);
   const openai = new OpenAIClient({ apiKey: config.openAiApiKey });
+  const planner = createOpenAiDatasetPlanner({ openai });
   const app = createApp({
-    queryOpenai: createQueryOpenai({ openai }),
+    generateDatasetPlan: createGenerateDatasetPlan({ planner }),
     populateDatabase,
   });
 
