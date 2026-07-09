@@ -1,148 +1,103 @@
 # DataWizard
 
-![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)
-![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)
-![Webpack](https://img.shields.io/badge/Webpack-8DD6F9?style=for-the-badge&logo=webpack&logoColor=black)
-![Jest](https://img.shields.io/badge/Jest-C21325?style=for-the-badge&logo=jest&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI-000000?style=for-the-badge&logo=openai&logoColor=white)
-![Material UI](https://img.shields.io/badge/Material%20UI-0081CB?style=for-the-badge&logo=mui&logoColor=white)
-![Babel](https://img.shields.io/badge/Babel-F9DC3E?style=for-the-badge&logo=babel&logoColor=black)
-![CORS](https://img.shields.io/badge/CORS-2E8B57?style=for-the-badge&logo=cors&logoColor=white)
-![CSS Loader](https://img.shields.io/badge/CSS%20Loader-2A9D8F?style=for-the-badge&logo=css3&logoColor=white)
-![dotenv](https://img.shields.io/badge/dotenv-72A98D?style=for-the-badge&logo=dotenv&logoColor=white)
+DataWizard turns a natural-language dataset request into a reviewable PostgreSQL seed plan. It validates the model output, renders deterministic SQL, shows a preview, and executes only after explicit confirmation.
 
-**DataWizard** is a powerful tool that uses OpenAI to generate SQL queries and populate databases with information based on user input. Simply tell DataWizard how many rows and tables you want, specify the type of information (e.g., pizza store locations, menu items, employees), and provide a link to your database. DataWizard will create the SQL queries and execute them to populate your database automatically.
+![DataWizard logo](public/assets/dataWizardLogo.png)
+
+## Why it exists
+
+Creating realistic development data is slow and repetitive. DataWizard gives engineers a safe, inspectable path from “make 20 pizza shops with menus” to a disposable PostgreSQL dataset without hiding the generated schema or SQL.
 
 ## Features
 
-- **Generate SQL Queries Automatically:** Using OpenAI, DataWizard generates SQL queries based on the information you specify, saving time on manual query writing.
-- **Populate Your Database:** After generating the SQL queries, DataWizard will send the queries to your database to populate it with the specified data.
-- **Flexible Inputs:** Specify how many rows and tables you want, along with the type of information needed (e.g., "pizza store locations, menu items, and employees").
-- **Database Integration:** Easily connect to your database by pasting the link to your database in the application, and let DataWizard handle the rest.
-- **Error-Free Query Generation:** DataWizard ensures that the generated queries are syntactically correct and optimized for your database.
+- Structured OpenAI dataset planning with domain validation.
+- Preview-first workflow: inspect schema, rows, SQL, assumptions, and policy findings before execution.
+- Fail-closed PostgreSQL SQL policy and bounded database execution.
+- React client, Express API, shared request/response contracts, and Jest coverage.
+- Request IDs, redacted logs, health/readiness endpoints, rate limits, and configurable CORS.
 
-## Technologies Used
+## Architecture
 
-- **Frontend:** React.js for building an interactive and user-friendly interface.
-- **Backend:** Node.js with Express.js to handle API requests and server-side logic.
-- **AI Integration:** OpenAI's GPT-3 for generating SQL queries based on user input.
-- **Database Interaction:** Send SQL queries to the database using a connection string.
-- **Testing:** Jest for unit and integration tests, along with React Testing Library for frontend testing.
-- **API Testing:** Supertest for testing the backend APIs.
-- **Build Tools:** Webpack for bundling and optimizing the frontend.
+```text
+React client -> shared API contracts -> Express API
+                                      |-> OpenAI adapter -> validated plan
+                                      |-> deterministic SQL renderer -> AST policy
+                                      `-> PostgreSQL executor (explicit confirmation)
+```
 
-## How It Works
+See [docs/architecture.md](docs/architecture.md) for module responsibilities and [docs/security.md](docs/security.md) for trust boundaries.
 
-1. **User Input:**
-
-   - Enter how many tables and rows you need in your database.
-   - Specify the type of information you want (e.g., "pizza store locations, menu items, and employees").
-   - Paste the link to your database connection (e.g., PostgreSQL, MySQL).
-
-2. **SQL Query Generation:**
-
-   - DataWizard uses OpenAI's GPT-3 to generate the appropriate SQL queries based on your input.
-
-3. **Database Population:**
-
-   - Once the SQL queries are generated, DataWizard executes them on your database to populate it with the data.
-
-4. **Database Confirmation:**
-   - DataWizard will show you the status of the query execution, ensuring your database is populated correctly.
-
-## Installation
+## Quick start
 
 ### Prerequisites
 
-- Node.js (v14 or above)
-- A database (PostgreSQL, MySQL, or any SQL-based database)
-- OpenAI API Key for generating SQL queries
-
-### Steps to Set Up Locally
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/yourusername/datawizard.git
-   cd datawizard
-   ```
-
-2. Install the dependencies:
-
-   **For backend (Node.js & Express):**
-
-   ```bash
-   cd backend
-   npm install
-   ```
-
-   **For frontend (React):**
-
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-3. Set up environment variables:
-
-   Create a `.env` file in the **backend** directory and add your credentials:
-
-   ```bash
-   OPENAI_API_KEY=your_openai_api_key
-   DATABASE_URL=your_database_connection_url
-   ```
-
-4. Run the application locally:
-
-   **Start the backend server:**
-
-   ```bash
-   cd backend
-   npm run server
-   ```
-
-   **Start the frontend development server:**
-
-   ```bash
-   cd frontend
-   npm start
-   ```
-
-   Your application will be accessible at `http://localhost:3000`.
-
-## Testing
-
-To ensure DataWizard works as expected, we have written tests for both the backend and frontend.
-
-### Run Unit Tests
-
-To run unit tests with Jest, navigate to the backend directory and run:
+- Node.js 20 or newer
+- Docker Desktop (optional, for the local PostgreSQL demo)
+- An OpenAI API key for live generation
 
 ```bash
-cd backend
-npm run test
+git clone https://github.com/mmeyer23/dataWizard.git
+cd dataWizard
+npm ci
+cp .env.example .env
 ```
 
-## Documentation
+Put your key in `.env` as `OPENAI_API_KEY`. Keep `.env` local and never commit it.
 
-- [Architecture](docs/architecture.md)
-- [PostgreSQL security notes](docs/security.md)
-- [Testing strategy](docs/testing.md)
+### Run the demo
+
+Start the isolated database when you want to exercise execution:
+
+```bash
+docker compose up -d postgres
+```
+
+Start the API and React development server together:
+
+```bash
+npm run devc
+```
+
+Open [http://localhost:8080](http://localhost:8080). The browser proxies `/api` to the API on port 3000. The API also exposes `/health`, `/ready`, and `/metrics` for local diagnostics.
+
+If you prefer separate processes, use `npm start` and `npm run dev` in two terminals.
+
+## Example prompts
+
+- “Create 12 coffee shops with names, cities, opening dates, and a 1–5 rating.”
+- “Create a small bookstore dataset with authors, books, and prices.”
+- “Generate 20 employees with departments, start dates, and email addresses.”
+
+Always review the generated SQL and policy findings before confirming execution. Use a disposable database and a least-privilege role; see [docs/security.md](docs/security.md).
+
+## Development commands
+
+| Command                        | Purpose                                              |
+| ------------------------------ | ---------------------------------------------------- |
+| `npm run dev`                  | Frontend development server on port 8080             |
+| `npm start`                    | Express API on port 3000                             |
+| `npm test -- --runInBand`      | Unit and integration tests without external services |
+| `npm run testc -- --runInBand` | Tests with coverage output                           |
+| `npm run typecheck`            | TypeScript checking for JS/JSDoc contracts           |
+| `npm run lint`                 | ESLint syntax and debugging checks                   |
+| `npm run format:check`         | Prettier documentation/configuration check           |
+| `npm run build`                | Production frontend bundle                           |
+| `npm run verify`               | Full local quality gate                              |
+
+The PostgreSQL integration test is opt-in and uses `DATA_WIZARD_TEST_DATABASE_URL`; the normal test suite never needs real credentials.
+
+## Screenshots and demo
+
+The logo above is the current application asset. Add a short screen recording or updated screenshots to `docs/media/` when the UI workflow changes; do not include credentials or live database data.
+
+## Roadmap
+
+See [docs/roadmap.md](docs/roadmap.md) for planned improvements, including richer schema previews, provider abstraction, and deployment examples.
 
 ## Contributing
 
-We welcome contributions to make DataWizard even better! To contribute:
-
-1. Fork the repository.
-2. Create a new branch for your feature (`git checkout -b feature/your-feature`).
-3. Commit your changes (`git commit -am 'Add new feature'`).
-4. Push to the branch (`git push origin feature/your-feature`).
-5. Open a pull request.
-
-Please ensure that your changes follow the coding standards, and provide tests where applicable.
+Read [AGENTS.md](AGENTS.md), choose a focused issue branch, run `npm run verify`, and reference the issue in your commit and pull request. Keep generated bundles, coverage, and secrets out of source control.
 
 ## License
 
-DataWizard is licensed under the MIT License. See [LICENSE](LICENSE) for more details.
+DataWizard is licensed under the ISC License. See [LICENSE](LICENSE).
