@@ -129,6 +129,7 @@ npm run test
 
 - [Architecture](docs/architecture.md)
 - [PostgreSQL security notes](docs/security.md)
+- [Testing strategy](docs/testing.md)
 
 ## Contributing
 
