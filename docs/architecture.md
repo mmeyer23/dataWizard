@@ -17,11 +17,13 @@ independently.
 5. A deterministic renderer converts the validated draft to PostgreSQL.
 6. The SQL policy parses the rendered SQL into an AST and approves only the
    expected CREATE SCHEMA, CREATE TABLE, and literal INSERT sequence.
-7. The injected database middleware requires that recorded approval before it
-   can execute SQL.
-8. The HTTP layer converts the plan, policy findings, and result into the shared
+7. The preview endpoint returns the plan, SQL, assumptions, warnings, and policy
+   findings without connecting to the database.
+8. The execute endpoint accepts only explicitly confirmed SQL, validates it with
+   the same policy, and then calls the injected database middleware.
+9. The HTTP layer converts the plan, policy findings, and result into the shared
    success contract.
-9. The client validates the response shape before rendering it.
+10. The client validates response shapes before rendering them.
 
 ## Module responsibilities
 
@@ -38,11 +40,22 @@ This layer must not import client, server, provider, or database modules.
 Owns user interaction and presentation. It may use shared API contracts but
 must not depend on server implementation modules.
 
+The primary workflow is preview-first: describe a dataset, generate a plan,
+inspect schema/rows/SQL/findings, explicitly approve, execute, then review
+inserted rows. Generating a plan must not change the database.
+
 ### `server/app.js`
 
 Constructs the Express application. External AI and database middleware are
 required dependencies passed to `createApp`; importing this module does not
 start a server, read configuration, or construct network clients.
+
+The HTTP API exposes separate endpoints for preview and execution:
+
+- `POST /api/query/plan` generates and validates a plan without database writes.
+- `POST /api/query/execute` requires explicit confirmation, revalidates SQL, and
+  executes only after policy approval.
+- `POST /api/query` is retained as the legacy generate-and-execute route.
 
 ### `server/controllers/`
 
@@ -110,7 +123,7 @@ code.
 
 The following issues extend this structure:
 
-- Issue #6: generate, preview, approve, and execute client workflow.
+- Issue #7: testing and AI safety evaluations.
 
 Each boundary should expose plain inputs and outputs so its core behavior can be
 tested without Express, live network access, or production credentials.

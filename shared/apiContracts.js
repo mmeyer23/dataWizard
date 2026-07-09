@@ -1,6 +1,8 @@
 // @ts-check
 
 export const QUERY_ENDPOINT = '/api/query';
+export const QUERY_PLAN_ENDPOINT = '/api/query/plan';
+export const QUERY_EXECUTE_ENDPOINT = '/api/query/execute';
 
 export const ERROR_CODES = Object.freeze({
   internalServerError: 'INTERNAL_SERVER_ERROR',
@@ -8,6 +10,8 @@ export const ERROR_CODES = Object.freeze({
   naturalLanguageQueryRequired: 'NATURAL_LANGUAGE_QUERY_REQUIRED',
   invalidNaturalLanguageQuery: 'INVALID_NATURAL_LANGUAGE_QUERY',
   postgreSqlUriRequired: 'POSTGRESQL_URI_REQUIRED',
+  approvedSqlRequired: 'APPROVED_SQL_REQUIRED',
+  executionConfirmationRequired: 'EXECUTION_CONFIRMATION_REQUIRED',
   invalidApiResponse: 'INVALID_API_RESPONSE',
 });
 
@@ -16,12 +20,23 @@ export const ERROR_CODES = Object.freeze({
  * @property {string} postgreSqlUri
  * @property {string} naturalLanguageQuery
  *
+ * @typedef {object} ExecuteQueryRequest
+ * @property {string} postgreSqlUri
+ * @property {string} approvedSql
+ * @property {true} confirmed
+ *
+ * @typedef {object} QueryPlanResponse
+ * @property {string} sql
+ * @property {string[]} warnings
+ * @property {DatasetPlanSummary} plan
+ * @property {SqlValidationSummary} validation
+ *
  * @typedef {object} QuerySuccessResponse
  * @property {string} sql
  * @property {unknown[]} rows
  * @property {number} rowCount
  * @property {string[]} warnings
- * @property {DatasetPlanSummary} plan
+ * @property {DatasetPlanSummary} [plan]
  * @property {SqlValidationSummary} validation
  *
  * @typedef {object} DatasetPlanSummary
@@ -103,6 +118,83 @@ export const createQueryRequest = (request) => ({
 });
 
 /**
+ * @param {unknown} body
+ * @returns {{ ok: true, value: ExecuteQueryRequest } | { ok: false, error: ApiError }}
+ */
+export const parseExecuteQueryRequest = (body) => {
+  if (!body || typeof body !== 'object') {
+    return invalidRequest(
+      ERROR_CODES.invalidRequestBody,
+      'The request body must be a JSON object.'
+    );
+  }
+
+  const request = /** @type {Record<string, unknown>} */ (body);
+  const postgreSqlUri = request.postgreSqlUri;
+  const approvedSql = request.approvedSql;
+
+  if (typeof postgreSqlUri !== 'string' || postgreSqlUri.trim().length === 0) {
+    return invalidRequest(
+      ERROR_CODES.postgreSqlUriRequired,
+      'A PostgreSQL connection URI is required.'
+    );
+  }
+
+  if (typeof approvedSql !== 'string' || approvedSql.trim().length === 0) {
+    return invalidRequest(
+      ERROR_CODES.approvedSqlRequired,
+      'Approved SQL is required before execution.'
+    );
+  }
+
+  if (request.confirmed !== true) {
+    return invalidRequest(
+      ERROR_CODES.executionConfirmationRequired,
+      'Execution requires explicit confirmation.'
+    );
+  }
+
+  return {
+    ok: true,
+    value: {
+      postgreSqlUri: postgreSqlUri.trim(),
+      approvedSql: approvedSql.trim(),
+      confirmed: true,
+    },
+  };
+};
+
+/**
+ * @param {ExecuteQueryRequest} request
+ * @returns {ExecuteQueryRequest}
+ */
+export const createExecuteQueryRequest = (request) => ({
+  postgreSqlUri: request.postgreSqlUri.trim(),
+  approvedSql: request.approvedSql.trim(),
+  confirmed: true,
+});
+
+/**
+ * @param {object} value
+ * @param {string} value.sql
+ * @param {string[]} [value.warnings]
+ * @param {DatasetPlanSummary} value.plan
+ * @param {SqlValidationSummary} value.validation
+ * @returns {QueryPlanResponse}
+ */
+export const createQueryPlanResponse = ({
+  sql,
+  warnings = [],
+  plan,
+  validation,
+}) => ({
+  sql,
+  warnings,
+  plan,
+  validation,
+});
+
+/**
  * @param {object} value
  * @param {string} value.sql
  * @param {{ rows?: unknown[], rowCount?: number } | undefined} value.results
@@ -125,9 +217,27 @@ export const createQuerySuccessResponse = ({
     rows,
     rowCount: results?.rowCount ?? rows.length,
     warnings,
-    plan,
+    ...(plan === undefined ? {} : { plan }),
     validation,
   };
+};
+
+/**
+ * @param {unknown} value
+ * @returns {value is QueryPlanResponse}
+ */
+export const isQueryPlanResponse = (value) => {
+  if (!value || typeof value !== 'object') return false;
+
+  const response = /** @type {Record<string, unknown>} */ (value);
+
+  return (
+    typeof response.sql === 'string' &&
+    Array.isArray(response.warnings) &&
+    response.warnings.every((warning) => typeof warning === 'string') &&
+    isDatasetPlanSummary(response.plan) &&
+    isSqlValidationSummary(response.validation)
+  );
 };
 
 /**
@@ -145,7 +255,7 @@ export const isQuerySuccessResponse = (value) => {
     Number.isInteger(response.rowCount) &&
     Array.isArray(response.warnings) &&
     response.warnings.every((warning) => typeof warning === 'string') &&
-    isDatasetPlanSummary(response.plan) &&
+    (response.plan === undefined || isDatasetPlanSummary(response.plan)) &&
     isSqlValidationSummary(response.validation)
   );
 };

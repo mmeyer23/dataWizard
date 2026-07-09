@@ -1,27 +1,69 @@
-import React, { useState } from 'react';
-import { TextField, Button, Typography, Container, Box } from '@mui/material';
+import React, { useMemo, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  Container,
+  FormControlLabel,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material';
 import dataWizardLogo from '../../public/assets/dataWizardLogo.png';
 import {
+  createExecuteQueryRequest,
   createQueryRequest,
   getApiErrorMessage,
+  isQueryPlanResponse,
   isQuerySuccessResponse,
-  QUERY_ENDPOINT,
+  QUERY_EXECUTE_ENDPOINT,
+  QUERY_PLAN_ENDPOINT,
 } from '../../shared/apiContracts.js';
 
 const DataRequest = () => {
   const [postgreSqlUri, setPostgreSqlUri] = useState('');
   const [naturalLanguageQuery, setNaturalLanguageQuery] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState('');
   const [error, setError] = useState('');
-  const [serverResponse, setServerResponse] = useState(null);
+  const [planResponse, setPlanResponse] = useState(null);
+  const [previewRows, setPreviewRows] = useState([]);
+  const [executionResponse, setExecutionResponse] = useState(null);
+  const [executionConfirmed, setExecutionConfirmed] = useState(false);
+  const [copyMessage, setCopyMessage] = useState('');
 
-  const handleSubmit = async () => {
+  const canGenerate =
+    loadingStep.length === 0 &&
+    postgreSqlUri.trim().length > 0 &&
+    naturalLanguageQuery.trim().length > 0;
+  const validationPassed = planResponse?.validation?.ok === true;
+  const canExecute =
+    loadingStep.length === 0 && validationPassed && executionConfirmed;
+
+  const rowCountLabel = useMemo(() => {
+    const rowCount = planResponse?.plan?.rows?.length ?? 0;
+    return `${rowCount} sample row${rowCount === 1 ? '' : 's'}`;
+  }, [planResponse]);
+
+  const handleGenerate = async () => {
     setError('');
-    setServerResponse(null);
-    setLoading(true);
+    setCopyMessage('');
+    setPlanResponse(null);
+    setPreviewRows([]);
+    setExecutionResponse(null);
+    setExecutionConfirmed(false);
+    setLoadingStep('generate');
 
     try {
-      const response = await fetch(QUERY_ENDPOINT, {
+      const response = await fetch(QUERY_PLAN_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -36,201 +78,494 @@ const DataRequest = () => {
         setError(
           getApiErrorMessage(
             responseData,
-            'The request could not be completed.'
+            'The plan could not be generated.'
           )
         );
         return;
       }
 
-      if (!isQuerySuccessResponse(responseData)) {
-        setError('The server returned an invalid response.');
+      if (!isQueryPlanResponse(responseData)) {
+        setError('The server returned an invalid plan response.');
         return;
       }
 
-      setServerResponse(responseData);
+      setPlanResponse(responseData);
+      setPreviewRows(responseData.plan.rows);
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setLoadingStep('');
+    }
+  };
+
+  const handleExecute = async () => {
+    if (!planResponse || !executionConfirmed) return;
+
+    setError('');
+    setCopyMessage('');
+    setExecutionResponse(null);
+    setLoadingStep('execute');
+
+    try {
+      const response = await fetch(QUERY_EXECUTE_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(
+          createExecuteQueryRequest({
+            postgreSqlUri,
+            approvedSql: planResponse.sql,
+            confirmed: executionConfirmed,
+          })
+        ),
+      });
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        setError(
+          getApiErrorMessage(responseData, 'The SQL could not be executed.')
+        );
+        return;
+      }
+
+      if (!isQuerySuccessResponse(responseData)) {
+        setError('The server returned an invalid execution response.');
+        return;
+      }
+
+      setExecutionResponse(responseData);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingStep('');
+    }
+  };
+
+  const handlePreviewCellChange = (rowIndex, columnIndex, value) => {
+    setPreviewRows((rows) =>
+      rows.map((row, currentRowIndex) =>
+        currentRowIndex === rowIndex
+          ? row.map((cell, currentColumnIndex) =>
+              currentColumnIndex === columnIndex ? value : cell
+            )
+          : row
+      )
+    );
+  };
+
+  const handleCopySql = async () => {
+    if (!planResponse?.sql) return;
+
+    try {
+      await navigator.clipboard.writeText(planResponse.sql);
+      setCopyMessage('SQL copied to clipboard.');
+    } catch {
+      setCopyMessage('Copy failed. Select the SQL text manually.');
     }
   };
 
   return (
-    <Container
+    <Box
       sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: 'linear-gradient(135deg, #2b2233, #2c3d50)',
-        height: '100vh',
-        padding: 4,
-        color: '#fff',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #f6f8fb, #e8eef8)',
+        color: '#152238',
+        py: { xs: 3, md: 6 },
       }}
     >
-      <img
-        src={dataWizardLogo}
-        alt='Data Wizard Logo'
-        style={{
-          width: '200px',
-          height: 'auto',
-          marginBottom: '20px',
-        }}
-      />
-
-      <Typography
-        variant='h1'
-        sx={{
-          marginTop: 3,
-          marginBottom: 5,
-          fontSize: 36,
-          fontFamily: "'Poppins', sans-serif",
-          textAlign: 'center',
-          color: '#fff',
-        }}
-      >
-        Data Wizard
-      </Typography>
-
-      <Box sx={{ maxWidth: 600, width: '100%' }}>
-        <TextField
-          fullWidth
+      <Container maxWidth='lg'>
+        <Paper
+          elevation={4}
           sx={{
-            marginTop: 2,
-            marginBottom: 5,
-            '& .MuiOutlinedInput-root': {
-              backgroundColor: '#fff',
-              borderRadius: '8px',
-              boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
-            },
-            '& .MuiInputLabel-root': {
-              transition: 'all 0.2s ease',
-              top: '-10px',
-              fontSize: '14px',
-            },
-            '& .MuiInputLabel-root.Mui-focused': {
-              top: '-18px',
-              fontSize: '12px',
-              color: '#53e9ee',
-            },
-          }}
-          id='postgreSqlUri'
-          label='Enter PostgreSQL URI'
-          variant='outlined'
-          onChange={(e) => setPostgreSqlUri(e.target.value)}
-        />
-        <TextField
-          fullWidth
-          multiline
-          minRows={5}
-          sx={{
-            marginBottom: 2,
-            '& .MuiOutlinedInput-root': {
-              backgroundColor: '#fff',
-              borderRadius: '8px',
-              boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
-            },
-            '& .MuiInputLabel-root': {
-              transition: 'all 0.2s ease',
-              top: '-10px',
-              fontSize: '14px',
-            },
-            '& .MuiInputLabel-root.Mui-focused': {
-              top: '-18px',
-              fontSize: '12px',
-              color: '#53e9ee',
-            },
-          }}
-          id='naturalLanguageQuery'
-          label='Description of table, columns, and number of rows'
-          variant='outlined'
-          onChange={(e) => setNaturalLanguageQuery(e.target.value)}
-        />
-
-        <Button
-          onClick={handleSubmit}
-          disabled={
-            loading ||
-            postgreSqlUri.trim().length === 0 ||
-            naturalLanguageQuery.trim().length === 0
-          }
-          variant='contained'
-          sx={{
-            width: '100%',
-            backgroundColor: '#53e9ee',
-            padding: '12px',
-            borderRadius: '8px',
-            fontSize: '16px',
-            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              backgroundColor: '#183451',
-              transform: 'scale(1.05)',
-              boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.2)',
-            },
-            '&:active': {
-              transform: 'scale(0.98)',
-              boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
-            },
-            '&:focus': {
-              outline: 'none',
-            },
+            p: { xs: 3, md: 5 },
+            borderRadius: 4,
           }}
         >
-          {loading ? 'Loading PostgreSQL Data...' : 'Populate Database'}
-        </Button>
-      </Box>
-
-      {/* Error Message */}
-      {error.length > 0 && (
-        <Container
-          sx={{
-            marginTop: 2,
-            padding: '16px',
-            backgroundColor: '#ffcccc',
-            borderRadius: '8px',
-            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
-            width: '100%',
-          }}
-        >
-          <Typography
-            sx={{ color: '#D32F2F', fontSize: '16px', textAlign: 'center' }}
-          >
-            {error}
-          </Typography>
-        </Container>
-      )}
-
-      {/* Server Response */}
-      {serverResponse && (
-        <Container
-          sx={{
-            marginTop: 2,
-            padding: '16px',
-            backgroundColor: '#e1f7d5',
-            borderRadius: '8px',
-            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
-            width: '100%',
-          }}
-        >
-          <Typography
-            sx={{ color: '#388E3C', fontSize: '16px', textAlign: 'center' }}
-          >
-            Successfully inserted {serverResponse.rowCount} row
-            {serverResponse.rowCount === 1 ? '' : 's'}.
-          </Typography>
-          {serverResponse.rows.length > 0 && (
-            <Box
-              component='pre'
-              sx={{ color: '#1b5e20', overflowX: 'auto', whiteSpace: 'pre-wrap' }}
+          <Stack spacing={4}>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={3}
+              alignItems={{ xs: 'flex-start', md: 'center' }}
+              justifyContent='space-between'
             >
-              {JSON.stringify(serverResponse.rows, null, 2)}
+              <Stack direction='row' spacing={2} alignItems='center'>
+                <img
+                  src={dataWizardLogo}
+                  alt='Data Wizard Logo'
+                  style={{ width: '72px', height: 'auto' }}
+                />
+                <Box>
+                  <Typography variant='h1' sx={{ fontSize: 34, fontWeight: 800 }}>
+                    Data Wizard
+                  </Typography>
+                  <Typography color='text.secondary'>
+                    Generate, inspect, approve, and execute PostgreSQL seed data.
+                  </Typography>
+                </Box>
+              </Stack>
+              <Chip
+                color='primary'
+                label='Preview-first database seeding'
+                sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }}
+              />
+            </Stack>
+
+            <Box component='section' aria-labelledby='request-heading'>
+              <Typography id='request-heading' variant='h2' sx={sectionHeadingSx}>
+                1. Describe the dataset
+              </Typography>
+              <Stack spacing={2}>
+                <TextField
+                  fullWidth
+                  id='postgreSqlUri'
+                  label='PostgreSQL connection URI'
+                  helperText='Used only when you explicitly execute approved SQL.'
+                  value={postgreSqlUri}
+                  variant='outlined'
+                  onChange={(e) => setPostgreSqlUri(e.target.value)}
+                />
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  id='naturalLanguageQuery'
+                  label='Dataset description'
+                  helperText='Example: Create 10 support tickets with realistic priorities and statuses.'
+                  value={naturalLanguageQuery}
+                  variant='outlined'
+                  onChange={(e) => setNaturalLanguageQuery(e.target.value)}
+                />
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <Button
+                    onClick={handleGenerate}
+                    disabled={!canGenerate}
+                    variant='contained'
+                    size='large'
+                  >
+                    {loadingStep === 'generate'
+                      ? 'Generating preview...'
+                      : 'Generate preview'}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setPlanResponse(null);
+                      setPreviewRows([]);
+                      setExecutionResponse(null);
+                      setExecutionConfirmed(false);
+                      setError('');
+                    }}
+                    disabled={loadingStep.length > 0}
+                    variant='outlined'
+                    size='large'
+                  >
+                    Clear workspace
+                  </Button>
+                </Stack>
+              </Stack>
             </Box>
-          )}
-        </Container>
-      )}
-    </Container>
+
+            {error.length > 0 && (
+              <Alert severity='error' role='alert'>
+                {error}
+              </Alert>
+            )}
+
+            {planResponse ? (
+              <Box component='section' aria-labelledby='preview-heading'>
+                <Typography id='preview-heading' variant='h2' sx={sectionHeadingSx}>
+                  2. Preview and approve
+                </Typography>
+                <Stack spacing={3}>
+                  <SchemaPreview plan={planResponse.plan} rowCountLabel={rowCountLabel} />
+                  <EditableRowsPreview
+                    columns={planResponse.plan.columns}
+                    rows={previewRows}
+                    onChange={handlePreviewCellChange}
+                  />
+                  <FindingsPanel
+                    assumptions={planResponse.plan.assumptions}
+                    warnings={[...planResponse.warnings, ...planResponse.plan.warnings]}
+                    findings={planResponse.validation.findings}
+                  />
+                  <SqlPreview
+                    sql={planResponse.sql}
+                    onCopy={handleCopySql}
+                    copyMessage={copyMessage}
+                  />
+                  <Paper variant='outlined' sx={{ p: 2 }}>
+                    <Stack spacing={2}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={executionConfirmed}
+                            onChange={(event) =>
+                              setExecutionConfirmed(event.target.checked)
+                            }
+                            inputProps={{
+                              'aria-label':
+                                'I reviewed the generated SQL and approve execution',
+                            }}
+                          />
+                        }
+                        label='I reviewed the generated SQL and approve execution against this database.'
+                      />
+                      <Button
+                        onClick={handleExecute}
+                        disabled={!canExecute}
+                        color='success'
+                        variant='contained'
+                        size='large'
+                      >
+                        {loadingStep === 'execute'
+                          ? 'Executing approved SQL...'
+                          : 'Execute approved SQL'}
+                      </Button>
+                    </Stack>
+                  </Paper>
+                </Stack>
+              </Box>
+            ) : (
+              <Paper variant='outlined' sx={{ p: 3 }}>
+                <Typography variant='h2' sx={sectionHeadingSx}>
+                  2. Preview and approve
+                </Typography>
+                <Typography color='text.secondary'>
+                  Generate a preview to inspect the schema, rows, validation
+                  findings, and SQL before anything touches your database.
+                </Typography>
+              </Paper>
+            )}
+
+            {executionResponse && (
+              <Box component='section' aria-labelledby='results-heading'>
+                <Typography id='results-heading' variant='h2' sx={sectionHeadingSx}>
+                  3. Review execution results
+                </Typography>
+                <Alert severity='success' sx={{ mb: 2 }}>
+                  Successfully inserted {executionResponse.rowCount} row
+                  {executionResponse.rowCount === 1 ? '' : 's'}.
+                </Alert>
+                <RowsResult rows={executionResponse.rows} />
+              </Box>
+            )}
+          </Stack>
+        </Paper>
+      </Container>
+    </Box>
   );
+};
+
+const SchemaPreview = ({ plan, rowCountLabel }) => (
+  <Paper variant='outlined' sx={{ p: 2 }}>
+    <Typography variant='h3' sx={subHeadingSx}>
+      Schema and table
+    </Typography>
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
+      <Chip label={`Schema: ${plan.schemaName}`} />
+      <Chip label={`Table: ${plan.tableName}`} />
+      <Chip label={rowCountLabel} />
+    </Stack>
+    <TableContainer>
+      <Table size='small' aria-label='Schema columns preview'>
+        <TableHead>
+          <TableRow>
+            <TableCell>Column</TableCell>
+            <TableCell>Type</TableCell>
+            <TableCell>Nullable</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {plan.columns.map((column) => (
+            <TableRow key={column.name}>
+              <TableCell>{column.name}</TableCell>
+              <TableCell>{column.type}</TableCell>
+              <TableCell>{column.nullable ? 'Yes' : 'No'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </Paper>
+);
+
+const EditableRowsPreview = ({ columns, rows, onChange }) => (
+  <Paper variant='outlined' sx={{ p: 2 }}>
+    <Typography variant='h3' sx={subHeadingSx}>
+      Editable sample rows
+    </Typography>
+    <Typography color='text.secondary' sx={{ mb: 2 }}>
+      Use this grid to review and mark up sample values before approving the SQL.
+      Regenerate the preview to apply material changes to generated SQL.
+    </Typography>
+    <TableContainer>
+      <Table size='small' aria-label='Editable sample rows'>
+        <TableHead>
+          <TableRow>
+            {columns.map((column) => (
+              <TableCell key={column.name}>{column.name}</TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((row, rowIndex) => (
+            <TableRow key={`row-${rowIndex}`}>
+              {columns.map((column, columnIndex) => (
+                <TableCell key={`${rowIndex}-${column.name}`}>
+                  <TextField
+                    fullWidth
+                    size='small'
+                    variant='standard'
+                    slotProps={{
+                      htmlInput: {
+                        'aria-label': `Row ${rowIndex + 1} ${column.name}`,
+                      },
+                    }}
+                    value={row[columnIndex] ?? ''}
+                    onChange={(event) =>
+                      onChange(rowIndex, columnIndex, event.target.value)
+                    }
+                  />
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </Paper>
+);
+
+const FindingsPanel = ({ assumptions, warnings, findings }) => (
+  <Paper variant='outlined' sx={{ p: 2 }}>
+    <Typography variant='h3' sx={subHeadingSx}>
+      Assumptions, warnings, and validation
+    </Typography>
+    <Stack spacing={1}>
+      <FindingGroup title='Assumptions' values={assumptions} empty='No assumptions returned.' />
+      <FindingGroup title='Warnings' values={warnings} empty='No warnings returned.' />
+      <FindingGroup
+        title='Validation findings'
+        values={findings.map((finding) => `${finding.code}: ${finding.message}`)}
+        empty='No validation findings returned.'
+      />
+    </Stack>
+  </Paper>
+);
+
+const FindingGroup = ({ title, values, empty }) => (
+  <Box>
+    <Typography component='h4' sx={{ fontWeight: 700 }}>
+      {title}
+    </Typography>
+    {values.length > 0 ? (
+      <Box component='ul' sx={{ mt: 0.5, mb: 1.5 }}>
+        {values.map((value, index) => (
+          <li key={`${title}-${index}`}>{value}</li>
+        ))}
+      </Box>
+    ) : (
+      <Typography color='text.secondary' sx={{ mb: 1.5 }}>
+        {empty}
+      </Typography>
+    )}
+  </Box>
+);
+
+const SqlPreview = ({ sql, onCopy, copyMessage }) => (
+  <Paper variant='outlined' sx={{ p: 2 }}>
+    <Stack
+      direction={{ xs: 'column', sm: 'row' }}
+      spacing={2}
+      justifyContent='space-between'
+      alignItems={{ xs: 'stretch', sm: 'center' }}
+      sx={{ mb: 2 }}
+    >
+      <Typography variant='h3' sx={subHeadingSx}>
+        Generated SQL
+      </Typography>
+      <Button onClick={onCopy} variant='outlined'>
+        Copy SQL
+      </Button>
+    </Stack>
+    {copyMessage && <Alert severity='info' sx={{ mb: 2 }}>{copyMessage}</Alert>}
+    <Box
+      component='pre'
+      aria-label='Generated SQL with syntax highlighting'
+      sx={{
+        backgroundColor: '#101828',
+        color: '#e6edf3',
+        borderRadius: 2,
+        overflowX: 'auto',
+        p: 2,
+        m: 0,
+        whiteSpace: 'pre-wrap',
+      }}
+    >
+      <HighlightedSql sql={sql} />
+    </Box>
+  </Paper>
+);
+
+const HighlightedSql = ({ sql }) => {
+  const keywords = new Set([
+    'CREATE',
+    'SCHEMA',
+    'TABLE',
+    'IF',
+    'NOT',
+    'EXISTS',
+    'INSERT',
+    'INTO',
+    'VALUES',
+    'RETURNING',
+    'TEXT',
+    'INTEGER',
+    'NUMERIC',
+    'BOOLEAN',
+    'DATE',
+    'TIMESTAMP',
+    'NULL',
+  ]);
+
+  return sql.split(/(\s+|[,();])/).map((token, index) =>
+    keywords.has(token.toUpperCase()) ? (
+      <Box component='span' key={`${token}-${index}`} sx={{ color: '#7dd3fc' }}>
+        {token}
+      </Box>
+    ) : (
+      <React.Fragment key={`${token}-${index}`}>{token}</React.Fragment>
+    )
+  );
+};
+
+const RowsResult = ({ rows }) => (
+  <Box
+    component='pre'
+    aria-label='Inserted rows'
+    sx={{
+      backgroundColor: '#f8fafc',
+      border: '1px solid #d0d7de',
+      borderRadius: 2,
+      overflowX: 'auto',
+      p: 2,
+      whiteSpace: 'pre-wrap',
+    }}
+  >
+    {JSON.stringify(rows, null, 2)}
+  </Box>
+);
+
+const sectionHeadingSx = {
+  fontSize: 24,
+  fontWeight: 800,
+  mb: 2,
+};
+
+const subHeadingSx = {
+  fontSize: 18,
+  fontWeight: 800,
+  mb: 1.5,
 };
 
 export default DataRequest;
