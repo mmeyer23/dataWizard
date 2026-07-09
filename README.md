@@ -125,6 +125,11 @@ cd backend
 npm run test
 ```
 
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [PostgreSQL security notes](docs/security.md)
+
 ## Contributing
 
 We welcome contributions to make DataWizard even better! To contribute:

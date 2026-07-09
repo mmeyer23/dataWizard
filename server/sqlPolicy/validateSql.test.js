@@ -35,6 +35,8 @@ describe('validateSql', () => {
         tableCount: 1,
         columnCount: 6,
         rowCount: 1,
+        schemaName: 'sample_data',
+        tableName: 'records',
       },
     });
   });

@@ -65,6 +65,8 @@ describe('POST /api/query', () => {
           tableCount: 1,
           columnCount: 1,
           rowCount: 1,
+          schemaName: 'test_data',
+          tableName: 'tests',
         },
       },
     });

@@ -109,6 +109,8 @@ export const validateSql = (sql, limits = SQL_POLICY_LIMITS) => {
       tableCount: 1,
       columnCount,
       rowCount,
+      schemaName: createSchema.name.name,
+      tableName: createTable.name.name,
     },
   };
 };
