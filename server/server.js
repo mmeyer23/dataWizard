@@ -15,11 +15,12 @@ export const startApplication = ({
   env = process.env,
   logger = console,
   OpenAIClient = OpenAI,
+  createAppFactory = createApp,
 } = {}) => {
   const config = loadConfig(env);
   const openai = new OpenAIClient({ apiKey: config.openAiApiKey });
   const planner = createOpenAiDatasetPlanner({ openai });
-  const app = createApp({
+  const app = createAppFactory({
     generateDatasetPlan: createGenerateDatasetPlan({ planner }),
     populateDatabase,
   });

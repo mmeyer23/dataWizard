@@ -91,9 +91,11 @@ const readColumns = (value, issues) => {
   }
 
   const names = new Set();
+  let hasInvalidColumn = false;
   const columns = value.map((column, index) => {
     if (!isRecord(column)) {
       issues.push(`columns[${index}] must be an object.`);
+      hasInvalidColumn = true;
       return undefined;
     }
 
@@ -105,9 +107,11 @@ const readColumns = (value, issues) => {
 
     if (typeof column.type !== 'string' || !COLUMN_TYPES.has(column.type)) {
       issues.push(`columns[${index}].type is not supported.`);
+      hasInvalidColumn = true;
     }
     if (typeof column.nullable !== 'boolean') {
       issues.push(`columns[${index}].nullable must be a boolean.`);
+      hasInvalidColumn = true;
     }
 
     return {
@@ -116,6 +120,8 @@ const readColumns = (value, issues) => {
       nullable: column.nullable,
     };
   });
+
+  if (hasInvalidColumn) return undefined;
 
   return /** @type {DatasetColumn[]} */ (columns);
 };
