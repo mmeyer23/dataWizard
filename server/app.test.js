@@ -123,6 +123,59 @@ describe('POST /api/query', () => {
   });
 });
 
+describe('POST /api/query/plan', () => {
+  it('generates and validates a plan without executing SQL', async () => {
+    const databaseSpy = jest.fn(populateDatabase);
+    const planApp = createApp({
+      generateDatasetPlan,
+      populateDatabase: databaseSpy,
+    });
+
+    const response = await request(planApp).post('/api/query/plan').send({
+      naturalLanguageQuery: 'Create one test row',
+      postgreSqlUri: 'postgres://localhost/test',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      sql: mockQuery,
+      warnings: [],
+      plan: mockPlan,
+      validation: expect.objectContaining({ ok: true }),
+    });
+    expect(databaseSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/query/execute', () => {
+  it('executes only confirmed approved SQL', async () => {
+    const response = await request(app).post('/api/query/execute').send({
+      postgreSqlUri: 'postgres://localhost/test',
+      approvedSql: mockQuery,
+      confirmed: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      sql: mockQuery,
+      rows: mockRows,
+      rowCount: 1,
+      warnings: [],
+      validation: expect.objectContaining({ ok: true }),
+    });
+  });
+
+  it('refuses execution without explicit confirmation', async () => {
+    const response = await request(app).post('/api/query/execute').send({
+      postgreSqlUri: 'postgres://localhost/test',
+      approvedSql: mockQuery,
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('EXECUTION_CONFIRMATION_REQUIRED');
+  });
+});
+
 describe('application routes', () => {
   it('reports health without invoking external dependencies', async () => {
     const response = await request(app).get('/health');

@@ -1,9 +1,13 @@
 import {
   createApiErrorResponse,
+  createExecuteQueryRequest,
+  createQueryPlanResponse,
   createQueryRequest,
   createQuerySuccessResponse,
   getApiErrorMessage,
+  isQueryPlanResponse,
   isQuerySuccessResponse,
+  parseExecuteQueryRequest,
   parseQueryRequest,
 } from './apiContracts.js';
 
@@ -50,32 +54,101 @@ describe('query request contract', () => {
   });
 });
 
+describe('execute query request contract', () => {
+  it('parses and normalizes a confirmed execute request', () => {
+    expect(
+      parseExecuteQueryRequest({
+        postgreSqlUri: ' postgres://localhost/test ',
+        approvedSql: ' SELECT 1; ',
+        confirmed: true,
+      })
+    ).toEqual({
+      ok: true,
+      value: {
+        postgreSqlUri: 'postgres://localhost/test',
+        approvedSql: 'SELECT 1;',
+        confirmed: true,
+      },
+    });
+  });
+
+  it.each([
+    [undefined, 'INVALID_REQUEST_BODY'],
+    [{ approvedSql: 'SELECT 1;', confirmed: true }, 'POSTGRESQL_URI_REQUIRED'],
+    [
+      { postgreSqlUri: 'postgres://localhost/test', confirmed: true },
+      'APPROVED_SQL_REQUIRED',
+    ],
+    [
+      {
+        postgreSqlUri: 'postgres://localhost/test',
+        approvedSql: 'SELECT 1;',
+      },
+      'EXECUTION_CONFIRMATION_REQUIRED',
+    ],
+  ])('rejects invalid execute input %#', (input, code) => {
+    expect(parseExecuteQueryRequest(input)).toEqual(
+      expect.objectContaining({
+        ok: false,
+        error: expect.objectContaining({ code }),
+      })
+    );
+  });
+
+  it('creates a normalized execute request', () => {
+    expect(
+      createExecuteQueryRequest({
+        postgreSqlUri: ' postgres://localhost/test ',
+        approvedSql: ' SELECT 1; ',
+        confirmed: true,
+      })
+    ).toEqual({
+      postgreSqlUri: 'postgres://localhost/test',
+      approvedSql: 'SELECT 1;',
+      confirmed: true,
+    });
+  });
+});
+
 describe('API response contract', () => {
+  const plan = {
+    schemaName: 'test_data',
+    tableName: 'tests',
+    columns: [{ name: 'name', type: 'text', nullable: false }],
+    rows: [['Ada']],
+    assumptions: [],
+    warnings: [],
+    model: 'test-model',
+    promptVersion: 'test-prompt',
+  };
+  const validation = {
+    ok: true,
+    findings: [],
+    summary: {
+      statementCount: 3,
+      tableCount: 1,
+      columnCount: 1,
+      rowCount: 1,
+    },
+  };
+
+  it('creates and recognizes a plan response', () => {
+    const response = createQueryPlanResponse({
+      sql: 'CREATE SCHEMA IF NOT EXISTS test_data;',
+      plan,
+      validation,
+    });
+
+    expect(response.plan).toBe(plan);
+    expect(isQueryPlanResponse(response)).toBe(true);
+  });
+
   it('creates and recognizes a success response', () => {
-    const plan = {
-      schemaName: 'test_data',
-      tableName: 'tests',
-      columns: [{ name: 'name', type: 'text', nullable: false }],
-      rows: [['Ada']],
-      assumptions: [],
-      warnings: [],
-      model: 'test-model',
-      promptVersion: 'test-prompt',
-    };
     const response = createQuerySuccessResponse({
       sql: 'INSERT INTO tests DEFAULT VALUES;',
       results: { rows: [{ id: 1 }] },
       plan,
-      validation: {
-        ok: true,
-        findings: [],
-        summary: {
-          statementCount: 3,
-          tableCount: 1,
-          columnCount: 1,
-          rowCount: 1,
-        },
-      },
+      validation,
     });
 
     expect(response.rowCount).toBe(1);

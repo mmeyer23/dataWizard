@@ -1,12 +1,18 @@
 import express from 'express';
 import cors from 'cors';
-import { validateQueryRequest } from './controllers/requestValidationController.js';
+import {
+  validateExecuteQueryRequest,
+  validateQueryRequest,
+} from './controllers/requestValidationController.js';
 import { validateGeneratedSql } from './controllers/sqlPolicyController.js';
 import {
   createApiErrorResponse,
+  createQueryPlanResponse,
   createQuerySuccessResponse,
   ERROR_CODES,
+  QUERY_EXECUTE_ENDPOINT,
   QUERY_ENDPOINT,
+  QUERY_PLAN_ENDPOINT,
 } from '../shared/apiContracts.js';
 
 export const createApp = ({ generateDatasetPlan, populateDatabase }) => {
@@ -27,6 +33,39 @@ export const createApp = ({ generateDatasetPlan, populateDatabase }) => {
   app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
   });
+
+  app.post(
+    QUERY_PLAN_ENDPOINT,
+    validateQueryRequest,
+    generateDatasetPlan,
+    validateGeneratedSql,
+    (_req, res) => {
+      res.status(200).json(
+        createQueryPlanResponse({
+          sql: res.locals.databaseQuery[0],
+          warnings: res.locals.datasetPlan.warnings,
+          plan: res.locals.datasetPlan,
+          validation: res.locals.sqlValidation,
+        })
+      );
+    }
+  );
+
+  app.post(
+    QUERY_EXECUTE_ENDPOINT,
+    validateExecuteQueryRequest,
+    validateGeneratedSql,
+    populateDatabase,
+    (_req, res) => {
+      res.status(200).json(
+        createQuerySuccessResponse({
+          sql: res.locals.databaseQuery[0],
+          results: res.locals.results,
+          validation: res.locals.sqlValidation,
+        })
+      );
+    }
+  );
 
   app.post(
     QUERY_ENDPOINT,
