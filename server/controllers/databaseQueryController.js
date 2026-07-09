@@ -1,5 +1,4 @@
-import pg from 'pg';
-const { Client } = pg;
+import { executeValidatedSql } from '../database/postgresExecution.js';
 
 export const populateDatabase = async (req, res, next) => {
   const pgUri = req.body.postgreSqlUri;
@@ -11,12 +10,7 @@ export const populateDatabase = async (req, res, next) => {
       message: { err: 'A PostgreSQL connection URI is required.' },
     });
   }
-  const client = new Client({
-    connectionString: pgUri,
-  });
-
   const { databaseQuery } = res.locals;
-  // console.log('database query: ', databaseQuery[0])
   if (!databaseQuery) {
     return next({
       log: 'populateDatabase: Generated SQL not available',
@@ -36,22 +30,23 @@ export const populateDatabase = async (req, res, next) => {
   }
 
   try {
-    await client.connect();
-    await client.query('BEGIN');
-    const results = await client.query(databaseQuery[0]);
-    await client.query('COMMIT');
+    const results = await executeValidatedSql({
+      connectionString: pgUri,
+      sql: databaseQuery[0],
+      sqlValidation: res.locals.sqlValidation,
+    });
     res.locals.results = results;
-    // console.log(`Upload result: ${JSON.stringify(results,null,2)}`);
     return next();
   } catch (error) {
-    await client.query('ROLLBACK');
     return next({
-      log: `populateDatabase: ${error.message}`,
-      status: 500,
-      code: 'DATABASE_QUERY_FAILED',
-      message: { err: 'The database query could not be completed.' },
+      log: error.safeLog ?? 'populateDatabase: database execution failed',
+      status: error.status ?? 500,
+      code: error.code ?? 'DATABASE_QUERY_FAILED',
+      message: {
+        err:
+          error.safeMessage ??
+          'The database query could not be completed.',
+      },
     });
-  } finally {
-    await client.end();
   }
 };

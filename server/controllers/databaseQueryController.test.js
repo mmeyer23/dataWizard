@@ -1,19 +1,13 @@
-import { Client } from 'pg';
 import { populateDatabase } from './databaseQueryController';
+import { executeValidatedSql } from '../database/postgresExecution.js';
 
-jest.mock('pg');
+jest.mock('../database/postgresExecution.js');
 
 describe('populateDatabase Controller', () => {
-  let mockReq, mockRes, mockClient, mockNext;
+  let mockReq, mockRes, mockNext;
 
   beforeEach(() => {
-    mockClient = {
-      connect: jest.fn(),
-      query: jest.fn(),
-      end: jest.fn(),
-    };
-
-    Client.mockImplementation(() => mockClient);
+    executeValidatedSql.mockResolvedValue({ rows: [] });
 
     mockReq = {
       body: {
@@ -22,7 +16,10 @@ describe('populateDatabase Controller', () => {
     };
     mockRes = {
       locals: {
-        sqlValidation: { ok: true },
+        sqlValidation: {
+          ok: true,
+          summary: { schemaName: 'test_db', tableName: 'tests' },
+        },
         databaseQuery: [
           `CREATE SCHEMA IF NOT EXISTS test_db;
 
@@ -45,7 +42,9 @@ describe('populateDatabase Controller', () => {
     };
     mockNext = jest.fn();
   });
-  afterEach(() => jest.clearAllMocks());
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
   it('should return 400 error if there is nothing in req.body.postreSqlUri', async () => {
     mockReq.body.postgreSqlUri = null;
@@ -78,10 +77,16 @@ describe('populateDatabase Controller', () => {
         status: 500,
       })
     );
-    expect(mockClient.connect).not.toHaveBeenCalled();
+    expect(executeValidatedSql).not.toHaveBeenCalled();
   });
   it('should handle errors coming from the database query', async () => {
-    mockClient.query.mockRejectedValueOnce(new Error('Database Error'));
+    const error = new Error('The database query could not be completed.');
+    error.code = 'DATABASE_QUERY_FAILED';
+    error.status = 500;
+    error.safeMessage = 'The database query could not be completed.';
+    error.safeLog = 'databaseExecution: DATABASE_QUERY_FAILED';
+    executeValidatedSql.mockRejectedValueOnce(error);
+
     await populateDatabase(mockReq, mockRes, mockNext);
     expect(mockNext).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -90,29 +95,26 @@ describe('populateDatabase Controller', () => {
       })
     );
   });
-  it('should call connect, query, and end on the client', async () => {
+  it('should execute the approved SQL with the provided connection string', async () => {
     await populateDatabase(mockReq, mockRes, mockNext);
-    expect(mockClient.connect).toHaveBeenCalled;
-    expect(mockClient.query).toHaveBeenCalledWith(
-      expect.stringContaining('CREATE SCHEMA IF NOT EXISTS test_db')
-    );
-    expect(mockClient.end).toHaveBeenCalled;
+    expect(executeValidatedSql).toHaveBeenCalledWith({
+      connectionString: 'postgres://mock:mockpassword@localhost/postgres',
+      sql: expect.stringContaining('CREATE SCHEMA IF NOT EXISTS test_db'),
+      sqlValidation: mockRes.locals.sqlValidation,
+    });
   });
   it('should call next with results when successful', async () => {
-    mockClient.query
-      .mockResolvedValueOnce()
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: 1,
-            title: 'Test1',
-            year: 2010,
-            genre: 'Sci-Fi',
-            director: 'Christopher Nolan',
-          },
-        ],
-      })
-      .mockResolvedValueOnce();
+    executeValidatedSql.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 1,
+          title: 'Test1',
+          year: 2010,
+          genre: 'Sci-Fi',
+          director: 'Christopher Nolan',
+        },
+      ],
+    });
     await populateDatabase(mockReq, mockRes, mockNext);
     expect(mockNext).toHaveBeenCalledWith();
     expect(mockRes.locals.results).toEqual({

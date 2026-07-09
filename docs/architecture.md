@@ -71,6 +71,14 @@ statements, expressions, constraints, comments, and parser failures are denied.
 Limits bound statement, table, column, and row counts. Findings are returned in
 the API contract for the preview workflow.
 
+### `server/database/`
+
+Owns bounded PostgreSQL execution. It validates connection URI shape without
+echoing credentials, requires SQL policy approval, sets transaction-local
+timeouts and a controlled search path, tracks transaction state for rollback,
+and redacts credential-bearing driver messages before they reach HTTP errors or
+logs.
+
 ### `server/config.js`
 
 Owns startup configuration parsing and validation. Invalid configuration is
@@ -102,7 +110,6 @@ code.
 
 The following issues extend this structure:
 
-- Issue #3: bounded PostgreSQL execution service.
 - Issue #6: generate, preview, approve, and execute client workflow.
 
 Each boundary should expose plain inputs and outputs so its core behavior can be
