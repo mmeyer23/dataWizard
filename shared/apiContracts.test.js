@@ -66,6 +66,16 @@ describe('API response contract', () => {
       sql: 'INSERT INTO tests DEFAULT VALUES;',
       results: { rows: [{ id: 1 }] },
       plan,
+      validation: {
+        ok: true,
+        findings: [],
+        summary: {
+          statementCount: 3,
+          tableCount: 1,
+          columnCount: 1,
+          rowCount: 1,
+        },
+      },
     });
 
     expect(response.rowCount).toBe(1);

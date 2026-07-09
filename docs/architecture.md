@@ -15,10 +15,13 @@ independently.
 3. The OpenAI adapter requests a strict structured dataset draft.
 4. Domain validation checks identifiers, columns, row shapes, and value types.
 5. A deterministic renderer converts the validated draft to PostgreSQL.
-6. The injected database middleware applies the current checks and executes the
-   SQL. Issue #2 will replace those checks with a deterministic policy parser.
-7. The HTTP layer converts the plan and result into the shared success contract.
-8. The client validates the response shape before rendering it.
+6. The SQL policy parses the rendered SQL into an AST and approves only the
+   expected CREATE SCHEMA, CREATE TABLE, and literal INSERT sequence.
+7. The injected database middleware requires that recorded approval before it
+   can execute SQL.
+8. The HTTP layer converts the plan, policy findings, and result into the shared
+   success contract.
+9. The client validates the response shape before rendering it.
 
 ## Module responsibilities
 
@@ -59,6 +62,15 @@ Owns provider-independent dataset-plan validation, versioned prompt and model
 configuration, and deterministic PostgreSQL rendering. No module in this layer
 opens a network connection or depends on Express.
 
+### `server/sqlPolicy/`
+
+Owns the fail-closed SQL execution policy. It parses PostgreSQL into an AST,
+requires one idempotent schema, one idempotent table, and one literal insert,
+then verifies cross-statement schema, table, and column consistency. Unknown
+statements, expressions, constraints, comments, and parser failures are denied.
+Limits bound statement, table, column, and row counts. Findings are returned in
+the API contract for the preview workflow.
+
 ### `server/config.js`
 
 Owns startup configuration parsing and validation. Invalid configuration is
@@ -90,7 +102,6 @@ code.
 
 The following issues extend this structure:
 
-- Issue #2: deterministic SQL parser and policy validator.
 - Issue #3: bounded PostgreSQL execution service.
 - Issue #6: generate, preview, approve, and execute client workflow.
 

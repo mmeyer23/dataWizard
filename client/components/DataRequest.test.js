@@ -29,6 +29,16 @@ global.fetch = jest.fn(() =>
           model: 'test-model',
           promptVersion: 'test-prompt',
         },
+        validation: {
+          ok: true,
+          findings: [],
+          summary: {
+            statementCount: 3,
+            tableCount: 1,
+            columnCount: 1,
+            rowCount: 1,
+          },
+        },
       }),
   })
 );

@@ -25,30 +25,16 @@ export const populateDatabase = async (req, res, next) => {
       message: { err: 'No generated SQL was available for execution.' },
     });
   }
-  //Safety check to make sure the AI generated query doesn't have dangerous SQL query keywords
-  const forbiddenKeywords = [
-    'DROP',
-    'DELETE',
-    'TRUNCATE',
-    'ALTER',
-    '--',
-    '/*',
-    '*/',
-  ];
-  // console.log(databaseQuery.length)
-  const containsForbiddenKeyword = forbiddenKeywords.some((keyword) =>
-    databaseQuery[0].toUpperCase().includes(keyword)
-  );
-  if (containsForbiddenKeyword) {
+
+  if (res.locals.sqlValidation?.ok !== true) {
     return next({
-      log: 'populateDatabase: Generated SQL contains a forbidden keyword',
-      status: 400,
-      code: 'UNSAFE_GENERATED_SQL',
-      message: { err: 'The generated SQL did not pass validation.' },
+      log: 'populateDatabase: SQL policy approval not available',
+      status: 500,
+      code: 'SQL_VALIDATION_REQUIRED',
+      message: { err: 'SQL policy approval is required before execution.' },
     });
   }
 
-  // console.log('Running query:', databaseQuery);
   try {
     await client.connect();
     await client.query('BEGIN');
