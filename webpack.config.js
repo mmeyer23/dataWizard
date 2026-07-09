@@ -9,6 +9,7 @@ export default {
   output: {
     path: path.resolve(__dirname, 'build'),
     filename: 'bundle.js',
+    clean: true,
   },
   module: {
     rules: [
@@ -65,5 +66,8 @@ export default {
   ],
   resolve: {
     extensions: ['.jsx', '.js'],
+  },
+  performance: {
+    hints: false,
   },
 };

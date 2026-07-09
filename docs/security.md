@@ -74,15 +74,15 @@ Primary boundaries:
 
 ## Concise threat model
 
-| Threat | Control |
-| --- | --- |
-| Cross-origin browser abuse | Restrict `CORS_ALLOWED_ORIGINS`; requests without trusted origins are denied. |
-| Oversized request bodies | `JSON_BODY_LIMIT` bounds request payload size and returns `REQUEST_BODY_TOO_LARGE`. |
-| Request flooding | In-memory rate limiting rejects excessive requests with `RATE_LIMIT_EXCEEDED`. |
-| Prompt injection producing unsafe SQL | Structured output, domain validation, deterministic rendering, and AST allowlist validation. |
-| Credential leakage through logs/errors | Request logs omit prompts and connection strings; error logs pass through redaction. |
-| Clickjacking and content sniffing | Security headers set `X-Frame-Options`, `X-Content-Type-Options`, CSP, and related policies. |
-| Unknown process shutdown state | Readiness flips to `draining` and the HTTP server closes on `SIGTERM`/`SIGINT`. |
+| Threat                                 | Control                                                                                      |
+| -------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Cross-origin browser abuse             | Restrict `CORS_ALLOWED_ORIGINS`; requests without trusted origins are denied.                |
+| Oversized request bodies               | `JSON_BODY_LIMIT` bounds request payload size and returns `REQUEST_BODY_TOO_LARGE`.          |
+| Request flooding                       | In-memory rate limiting rejects excessive requests with `RATE_LIMIT_EXCEEDED`.               |
+| Prompt injection producing unsafe SQL  | Structured output, domain validation, deterministic rendering, and AST allowlist validation. |
+| Credential leakage through logs/errors | Request logs omit prompts and connection strings; error logs pass through redaction.         |
+| Clickjacking and content sniffing      | Security headers set `X-Frame-Options`, `X-Content-Type-Options`, CSP, and related policies. |
+| Unknown process shutdown state         | Readiness flips to `draining` and the HTTP server closes on `SIGTERM`/`SIGINT`.              |
 
 ## Operational configuration
 
