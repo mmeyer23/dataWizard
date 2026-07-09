@@ -1,6 +1,9 @@
 import pg from 'pg';
+import { redactSensitiveText } from '../observability/redaction.js';
 
 const { Client: PgClient } = pg;
+
+export { redactSensitiveText };
 
 export const DEFAULT_POSTGRES_EXECUTION_OPTIONS = Object.freeze({
   applicationName: 'data-wizard',
@@ -193,14 +196,6 @@ export const validatePostgreSqlUri = (connectionString) => {
  * @param {unknown} value
  * @returns {string}
  */
-export const redactSensitiveText = (value) => {
-  if (typeof value !== 'string') return '';
-
-  return value
-    .replace(/postgres(?:ql)?:\/\/[^\s'")]+/gi, 'postgres://[redacted]')
-    .replace(/password=[^&\s'")]+/gi, 'password=[redacted]');
-};
-
 const runBoundedQuery = (client, text, executionOptions) =>
   withTimeout(
     client.query(text),

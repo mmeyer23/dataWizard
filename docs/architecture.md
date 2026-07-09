@@ -57,6 +57,10 @@ The HTTP API exposes separate endpoints for preview and execution:
   executes only after policy approval.
 - `POST /api/query` is retained as the legacy generate-and-execute route.
 
+The API boundary also owns operational controls: configured CORS, JSON body
+limits, rate limiting, secure headers, request IDs, redacted structured logging,
+readiness reporting, and stage-level latency/failure metrics.
+
 ### `server/controllers/`
 
 Adapts HTTP request state to application operations. Controllers should remain
@@ -123,7 +127,7 @@ code.
 
 The following issues extend this structure:
 
-- Issue #7: testing and AI safety evaluations.
+- Issue #9: documentation, developer experience, and CI.
 
 Each boundary should expose plain inputs and outputs so its core behavior can be
 tested without Express, live network access, or production credentials.

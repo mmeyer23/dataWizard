@@ -53,3 +53,48 @@ the provider's recommended `sslmode=require` or stricter equivalent.
 Do not paste connection strings into bug reports, screenshots, issue comments,
 or logs. Rotate the database password immediately if a connection string is
 shared accidentally.
+
+## Public API trust boundaries
+
+Data Wizard treats all browser input, model output, and database driver errors
+as untrusted.
+
+Primary boundaries:
+
+- Browser to API: requests are constrained by configured CORS origins, JSON body
+  limits, request rate limits, and shared API contracts.
+- API to OpenAI: prompts are sent only from validated requests. API keys stay in
+  server configuration and must never be sent to the browser.
+- OpenAI to SQL renderer: structured model output is parsed through domain
+  validation before deterministic SQL rendering.
+- SQL renderer to database: generated SQL must pass AST-based policy validation
+  and explicit user confirmation before execution.
+- Database to API: driver errors are mapped to safe API codes and redacted before
+  logging or response handling.
+
+## Concise threat model
+
+| Threat | Control |
+| --- | --- |
+| Cross-origin browser abuse | Restrict `CORS_ALLOWED_ORIGINS`; requests without trusted origins are denied. |
+| Oversized request bodies | `JSON_BODY_LIMIT` bounds request payload size and returns `REQUEST_BODY_TOO_LARGE`. |
+| Request flooding | In-memory rate limiting rejects excessive requests with `RATE_LIMIT_EXCEEDED`. |
+| Prompt injection producing unsafe SQL | Structured output, domain validation, deterministic rendering, and AST allowlist validation. |
+| Credential leakage through logs/errors | Request logs omit prompts and connection strings; error logs pass through redaction. |
+| Clickjacking and content sniffing | Security headers set `X-Frame-Options`, `X-Content-Type-Options`, CSP, and related policies. |
+| Unknown process shutdown state | Readiness flips to `draining` and the HTTP server closes on `SIGTERM`/`SIGINT`. |
+
+## Operational configuration
+
+Environment variables:
+
+- `CORS_ALLOWED_ORIGINS`: comma-separated browser origins allowed to call the API.
+  Defaults to local Webpack development origins.
+- `JSON_BODY_LIMIT`: Express JSON payload limit. Defaults to `100kb`.
+- `RATE_LIMIT_WINDOW_MS`: rate-limit window in milliseconds. Defaults to `60000`.
+- `RATE_LIMIT_MAX_REQUESTS`: requests allowed per client/window. Defaults to `60`.
+- `SHUTDOWN_GRACE_MS`: graceful shutdown timeout. Defaults to `10000`.
+
+Each response includes `X-Request-Id`. Logs include the same request ID so a
+request can be correlated across API layers without logging prompts or database
+credentials by default.
