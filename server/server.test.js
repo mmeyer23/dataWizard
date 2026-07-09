@@ -8,10 +8,48 @@ describe('startServer', () => {
       return server;
     });
     const logger = { log: jest.fn() };
+    const processRef = { once: jest.fn() };
 
-    expect(startServer({ app: { listen }, port: 4242, logger })).toBe(server);
+    expect(startServer({ app: { listen, locals: {} }, port: 4242, logger, processRef })).toBe(server);
     expect(listen).toHaveBeenCalledWith(4242, expect.any(Function));
     expect(logger.log).toHaveBeenCalledWith('Server listening on port: 4242');
+    expect(processRef.once).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+    expect(processRef.once).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+  });
+
+  it('marks readiness false and closes the server on shutdown', () => {
+    const close = jest.fn((callback) => callback());
+    const server = { close };
+    const app = {
+      locals: { ready: true },
+      listen: jest.fn((_port, callback) => {
+        callback();
+        return server;
+      }),
+    };
+    const handlers = {};
+    const processRef = {
+      once: jest.fn((signal, handler) => {
+        handlers[signal] = handler;
+      }),
+      exitCode: 0,
+    };
+    const logger = { log: jest.fn(), error: jest.fn() };
+
+    startServer({
+      app,
+      port: 4242,
+      logger,
+      processRef,
+      shutdownGraceMs: 1000,
+    });
+    handlers.SIGTERM('SIGTERM');
+
+    expect(app.locals.ready).toBe(false);
+    expect(close).toHaveBeenCalledWith(expect.any(Function));
+    expect(logger.log).toHaveBeenCalledWith(
+      'Received SIGTERM; shutting down gracefully.'
+    );
   });
 });
 
@@ -56,6 +94,11 @@ describe('startApplication', () => {
     expect(createAppFactory).toHaveBeenCalledWith({
       generateDatasetPlan: expect.any(Function),
       populateDatabase: expect.any(Function),
+      logger,
+      security: expect.objectContaining({
+        allowedOrigins: expect.any(Array),
+        jsonBodyLimit: expect.any(String),
+      }),
     });
   });
 });

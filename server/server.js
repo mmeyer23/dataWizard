@@ -6,10 +6,40 @@ import { createGenerateDatasetPlan } from './controllers/openaiController.js';
 import { populateDatabase } from './controllers/databaseQueryController.js';
 import { createOpenAiDatasetPlanner } from './adapters/openaiDatasetPlanner.js';
 
-export const startServer = ({ app, port, logger = console }) =>
-  app.listen(port, () => {
+export const startServer = ({
+  app,
+  port,
+  logger = console,
+  shutdownGraceMs = 10_000,
+  processRef = process,
+}) => {
+  const server = app.listen(port, () => {
     logger.log(`Server listening on port: ${port}`);
   });
+
+  const shutdown = (signal) => {
+    app.locals.ready = false;
+    logger.log(`Received ${signal}; shutting down gracefully.`);
+
+    const timeoutId = setTimeout(() => {
+      logger.error?.('Graceful shutdown timed out.');
+      processRef.exitCode = 1;
+    }, shutdownGraceMs);
+
+    server.close((error) => {
+      clearTimeout(timeoutId);
+      if (error) {
+        logger.error?.(error);
+        processRef.exitCode = 1;
+      }
+    });
+  };
+
+  processRef.once?.('SIGTERM', shutdown);
+  processRef.once?.('SIGINT', shutdown);
+
+  return server;
+};
 
 export const startApplication = ({
   env = process.env,
@@ -23,7 +53,14 @@ export const startApplication = ({
   const app = createAppFactory({
     generateDatasetPlan: createGenerateDatasetPlan({ planner }),
     populateDatabase,
+    security: config,
+    logger,
   });
 
-  return startServer({ app, port: config.port, logger });
+  return startServer({
+    app,
+    port: config.port,
+    logger,
+    shutdownGraceMs: config.shutdownGraceMs,
+  });
 };
