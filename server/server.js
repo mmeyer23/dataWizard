@@ -5,6 +5,7 @@ import { loadConfig } from './config.js';
 import { createGenerateDatasetPlan } from './controllers/openaiController.js';
 import { populateDatabase } from './controllers/databaseQueryController.js';
 import { createOpenAiDatasetPlanner } from './adapters/openaiDatasetPlanner.js';
+import { createDemoDatasetPlanner } from './adapters/demoDatasetPlanner.js';
 
 export const startServer = ({
   app,
@@ -48,11 +49,14 @@ export const startApplication = ({
   createAppFactory = createApp,
 } = {}) => {
   const config = loadConfig(env);
-  const openai = new OpenAIClient({ apiKey: config.openAiApiKey });
-  const planner = createOpenAiDatasetPlanner({ openai });
+  const planner = config.demoMode
+    ? createDemoDatasetPlanner()
+    : createOpenAiDatasetPlanner({
+        openai: new OpenAIClient({ apiKey: config.openAiApiKey }),
+      });
   const app = createAppFactory({
     generateDatasetPlan: createGenerateDatasetPlan({ planner }),
-    populateDatabase,
+    populateDatabase: config.demoMode ? rejectDemoExecution : populateDatabase,
     security: config,
     logger,
   });
@@ -64,3 +68,10 @@ export const startApplication = ({
     shutdownGraceMs: config.shutdownGraceMs,
   });
 };
+
+const rejectDemoExecution = (_req, _res, next) =>
+  next({
+    status: 409,
+    code: 'DEMO_EXECUTION_DISABLED',
+    message: { err: 'Database execution is disabled in DEMO_MODE.' },
+  });

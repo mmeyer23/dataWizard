@@ -58,6 +58,14 @@ Start the API and React development server together:
 npm run devc
 ```
 
+For a credential-free UI walkthrough, use the deterministic local demo provider:
+
+```bash
+npm run demo
+```
+
+Demo mode is explicitly non-production, labels its generated data, and disables database execution. It does not require `OPENAI_API_KEY`.
+
 Open [http://localhost:8080](http://localhost:8080). The browser proxies `/api` to the API on port 3000. The API also exposes `/health`, `/ready`, and `/metrics` for local diagnostics.
 
 If you prefer separate processes, use `npm start` and `npm run dev` in two terminals.

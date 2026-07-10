@@ -14,6 +14,7 @@ describe('loadConfig', () => {
       })
     ).toEqual({
       openAiApiKey: 'test-key',
+      demoMode: false,
       port: 4242,
       allowedOrigins: ['https://app.example', 'https://admin.example'],
       jsonBodyLimit: '10kb',
@@ -29,6 +30,24 @@ describe('loadConfig', () => {
 
   it('rejects a missing API key', () => {
     expect(() => loadConfig({})).toThrow('OPENAI_API_KEY is required.');
+  });
+
+  it('allows demo mode without an API key', () => {
+    expect(loadConfig({ DEMO_MODE: 'true' })).toEqual(
+      expect.objectContaining({ openAiApiKey: undefined, demoMode: true })
+    );
+  });
+
+  it('rejects demo mode in production', () => {
+    expect(() =>
+      loadConfig({ DEMO_MODE: 'true', NODE_ENV: 'production' })
+    ).toThrow('DEMO_MODE cannot be enabled in production.');
+  });
+
+  it('rejects malformed demo mode values', () => {
+    expect(() => loadConfig({ DEMO_MODE: 'yes' })).toThrow(
+      'DEMO_MODE must be true or false.'
+    );
   });
 
   it.each(['0', '65536', 'not-a-number', '3.14'])(

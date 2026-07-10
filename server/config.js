@@ -9,7 +9,8 @@ const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:8080', 'http://127.0.0.1:8080
 
 /**
  * @typedef {object} AppConfig
- * @property {string} openAiApiKey
+ * @property {string | undefined} openAiApiKey
+ * @property {boolean} demoMode
  * @property {number} port
  * @property {string[]} allowedOrigins
  * @property {string} jsonBodyLimit
@@ -23,8 +24,13 @@ const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:8080', 'http://127.0.0.1:8080
  * @returns {AppConfig}
  */
 export const loadConfig = (env) => {
+  const demoMode = parseBoolean(env.DEMO_MODE, false, 'DEMO_MODE');
+  if (demoMode && env.NODE_ENV === 'production') {
+    throw new Error('DEMO_MODE cannot be enabled in production.');
+  }
+
   const openAiApiKey = env.OPENAI_API_KEY?.trim();
-  if (!openAiApiKey) {
+  if (!openAiApiKey && !demoMode) {
     throw new Error('OPENAI_API_KEY is required.');
   }
 
@@ -32,6 +38,7 @@ export const loadConfig = (env) => {
 
   return Object.freeze({
     openAiApiKey,
+    demoMode,
     port,
     allowedOrigins: parseAllowedOrigins(env.CORS_ALLOWED_ORIGINS),
     jsonBodyLimit: env.JSON_BODY_LIMIT?.trim() || DEFAULT_JSON_BODY_LIMIT,
@@ -51,6 +58,19 @@ export const loadConfig = (env) => {
       'SHUTDOWN_GRACE_MS'
     ),
   });
+};
+
+/**
+ * @param {string | undefined} value
+ * @param {boolean} fallback
+ * @param {string} field
+ * @returns {boolean}
+ */
+const parseBoolean = (value, fallback, field) => {
+  if (value === undefined || value.trim() === '') return fallback;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new Error(`${field} must be true or false.`);
 };
 
 /**
