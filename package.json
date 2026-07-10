@@ -33,6 +33,7 @@
     "typecheck": "tsc --project tsconfig.json",
     "dev": "webpack serve --open --port 8080",
     "devc": "concurrently \"npm:dev\" \"nodemon server/index.js\"",
+    "demo": "DEMO_MODE=true npm run devc",
     "test": "jest",
     "testc": "jest --coverage",
     "lint": "eslint .",

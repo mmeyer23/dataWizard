@@ -101,4 +101,25 @@ describe('startApplication', () => {
       }),
     });
   });
+
+  it('starts demo mode without constructing OpenAI and disables execution', () => {
+    const server = { close: jest.fn() };
+    const app = { listen: jest.fn((_port, callback) => { callback(); return server; }) };
+    const OpenAIClient = jest.fn();
+    const createAppFactory = jest.fn(() => app);
+
+    startApplication({
+      env: { DEMO_MODE: 'true', PORT: '4545' },
+      OpenAIClient,
+      createAppFactory,
+    });
+
+    expect(OpenAIClient).not.toHaveBeenCalled();
+    expect(createAppFactory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        populateDatabase: expect.any(Function),
+        security: expect.objectContaining({ demoMode: true }),
+      })
+    );
+  });
 });
