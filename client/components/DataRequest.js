@@ -21,7 +21,7 @@ import {
 import dataWizardLogo from '../../public/assets/dataWizardLogo.png';
 import {
   createExecuteQueryRequest,
-  createQueryRequest,
+  createQueryPlanRequest,
   getApiErrorMessage,
   isQueryPlanResponse,
   isQuerySuccessResponse,
@@ -42,11 +42,13 @@ const DataRequest = () => {
 
   const canGenerate =
     loadingStep.length === 0 &&
-    postgreSqlUri.trim().length > 0 &&
     naturalLanguageQuery.trim().length > 0;
   const validationPassed = planResponse?.validation?.ok === true;
   const canExecute =
-    loadingStep.length === 0 && validationPassed && executionConfirmed;
+    loadingStep.length === 0 &&
+    validationPassed &&
+    executionConfirmed &&
+    postgreSqlUri.trim().length > 0;
 
   const rowCountLabel = useMemo(() => {
     const rowCount = planResponse?.plan?.rows?.length ?? 0;
@@ -69,7 +71,7 @@ const DataRequest = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(
-          createQueryRequest({ postgreSqlUri, naturalLanguageQuery })
+          createQueryPlanRequest({ postgreSqlUri, naturalLanguageQuery })
         ),
       });
       const responseData = await response.json();

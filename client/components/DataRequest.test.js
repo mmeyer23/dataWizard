@@ -109,9 +109,29 @@ describe('DataRequest', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        postgreSqlUri: 'postgres://localhost/test',
         naturalLanguageQuery: 'Create one row',
+        postgreSqlUri: 'postgres://localhost/test',
       }),
+    });
+  });
+
+  test('generates a preview from a description without a database URI', async () => {
+    render(<DataRequest />);
+    fireEvent.change(screen.getByLabelText(/Dataset description/i), {
+      target: { value: 'Create one row' },
+    });
+
+    const generateButton = screen.getByRole('button', {
+      name: /Generate preview/i,
+    });
+    expect(generateButton).toBeEnabled();
+    fireEvent.click(generateButton);
+
+    expect(await screen.findByText(/Schema: test_data/i)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith('/api/query/plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ naturalLanguageQuery: 'Create one row' }),
     });
   });
 
@@ -217,7 +237,7 @@ describe('DataRequest', () => {
     ).toBeInTheDocument();
   });
 
-  test('disables generation until both inputs have values', () => {
+  test('disables generation until the dataset description has a value', () => {
     render(<DataRequest />);
 
     const generateButton = screen.getByRole('button', {
@@ -225,7 +245,9 @@ describe('DataRequest', () => {
     });
     expect(generateButton).toBeDisabled();
 
-    fillRequiredFields();
+    fireEvent.change(screen.getByLabelText(/Dataset description/i), {
+      target: { value: 'Create one row' },
+    });
 
     expect(generateButton).toBeEnabled();
   });

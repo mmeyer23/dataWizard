@@ -13,6 +13,7 @@ import {
 } from './security/httpSecurity.js';
 import {
   validateExecuteQueryRequest,
+  validateQueryPlanRequest,
   validateQueryRequest,
 } from './controllers/requestValidationController.js';
 import { validateGeneratedSql } from './controllers/sqlPolicyController.js';
@@ -77,7 +78,7 @@ export const createApp = ({
 
   app.post(
     QUERY_PLAN_ENDPOINT,
-    validateQueryRequest,
+    validateQueryPlanRequest,
     observeStage('generation', generateDatasetPlan, metrics, now),
     observeStage('validation', validateGeneratedSql, metrics, now),
     (_req, res) => {
