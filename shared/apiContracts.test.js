@@ -2,12 +2,14 @@ import {
   createApiErrorResponse,
   createExecuteQueryRequest,
   createQueryPlanResponse,
+  createQueryPlanRequest,
   createQueryRequest,
   createQuerySuccessResponse,
   getApiErrorMessage,
   isQueryPlanResponse,
   isQuerySuccessResponse,
   parseExecuteQueryRequest,
+  parseQueryPlanRequest,
   parseQueryRequest,
 } from './apiContracts.js';
 
@@ -51,6 +53,24 @@ describe('query request contract', () => {
       postgreSqlUri: 'postgres://localhost/test',
       naturalLanguageQuery: 'Create one row',
     });
+  });
+
+  it('parses a plan request without a database URI', () => {
+    expect(
+      parseQueryPlanRequest({ naturalLanguageQuery: ' Create one row ' })
+    ).toEqual({
+      ok: true,
+      value: { naturalLanguageQuery: 'Create one row' },
+    });
+  });
+
+  it('creates a plan request without sending an empty URI', () => {
+    expect(
+      createQueryPlanRequest({
+        postgreSqlUri: ' ',
+        naturalLanguageQuery: ' Create one row ',
+      })
+    ).toEqual({ naturalLanguageQuery: 'Create one row' });
   });
 });
 

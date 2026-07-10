@@ -20,6 +20,10 @@ export const ERROR_CODES = Object.freeze({
  * @property {string} postgreSqlUri
  * @property {string} naturalLanguageQuery
  *
+ * @typedef {object} QueryPlanRequest
+ * @property {string} [postgreSqlUri]
+ * @property {string} naturalLanguageQuery
+ *
  * @typedef {object} ExecuteQueryRequest
  * @property {string} postgreSqlUri
  * @property {string} approvedSql
@@ -105,6 +109,67 @@ export const parseQueryRequest = (body) => {
       postgreSqlUri: postgreSqlUri.trim(),
       naturalLanguageQuery: naturalLanguageQuery.trim(),
     },
+  };
+};
+
+/**
+ * @param {unknown} body
+ * @returns {{ ok: true, value: QueryPlanRequest } | { ok: false, error: ApiError }}
+ */
+export const parseQueryPlanRequest = (body) => {
+  if (!body || typeof body !== 'object') {
+    return invalidRequest(
+      ERROR_CODES.invalidRequestBody,
+      'The request body must be a JSON object.'
+    );
+  }
+
+  const request = /** @type {Record<string, unknown>} */ (body);
+  const naturalLanguageQuery = request.naturalLanguageQuery;
+  const postgreSqlUri = request.postgreSqlUri;
+
+  if (typeof naturalLanguageQuery !== 'string') {
+    return invalidRequest(
+      ERROR_CODES.invalidNaturalLanguageQuery,
+      'The natural-language query must be a string.'
+    );
+  }
+
+  if (naturalLanguageQuery.trim().length === 0) {
+    return invalidRequest(
+      ERROR_CODES.naturalLanguageQueryRequired,
+      'A natural-language query is required.'
+    );
+  }
+
+  if (postgreSqlUri !== undefined && typeof postgreSqlUri !== 'string') {
+    return invalidRequest(
+      ERROR_CODES.invalidRequestBody,
+      'The PostgreSQL connection URI must be a string when provided.'
+    );
+  }
+
+  const normalizedUri = postgreSqlUri?.trim();
+
+  return {
+    ok: true,
+    value: {
+      naturalLanguageQuery: naturalLanguageQuery.trim(),
+      ...(normalizedUri ? { postgreSqlUri: normalizedUri } : {}),
+    },
+  };
+};
+
+/**
+ * @param {QueryPlanRequest} request
+ * @returns {QueryPlanRequest}
+ */
+export const createQueryPlanRequest = (request) => {
+  const postgreSqlUri = request.postgreSqlUri?.trim();
+
+  return {
+    naturalLanguageQuery: request.naturalLanguageQuery.trim(),
+    ...(postgreSqlUri ? { postgreSqlUri } : {}),
   };
 };
 

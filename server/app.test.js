@@ -166,7 +166,6 @@ describe('POST /api/query/plan', () => {
 
     const response = await request(planApp).post('/api/query/plan').send({
       naturalLanguageQuery: 'Create one test row',
-      postgreSqlUri: 'postgres://localhost/test',
     });
 
     expect(response.status).toBe(200);
