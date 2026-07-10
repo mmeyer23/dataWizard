@@ -7,6 +7,8 @@ import {
   Chip,
   Container,
   FormControlLabel,
+  IconButton,
+  InputAdornment,
   Paper,
   Stack,
   Table,
@@ -39,6 +41,7 @@ const DataRequest = () => {
   const [executionResponse, setExecutionResponse] = useState(null);
   const [executionConfirmed, setExecutionConfirmed] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
+  const [showPostgreSqlUri, setShowPostgreSqlUri] = useState(false);
 
   const canGenerate =
     loadingStep.length === 0 &&
@@ -71,7 +74,7 @@ const DataRequest = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(
-          createQueryPlanRequest({ postgreSqlUri, naturalLanguageQuery })
+          createQueryPlanRequest({ naturalLanguageQuery })
         ),
       });
       const responseData = await response.json();
@@ -222,9 +225,30 @@ const DataRequest = () => {
                   fullWidth
                   id='postgreSqlUri'
                   label='PostgreSQL connection URI'
-                  helperText='Used only when you explicitly execute approved SQL.'
+                  type={showPostgreSqlUri ? 'text' : 'password'}
+                  autoComplete='off'
+                  helperText='Only needed for execution. Keep it out of screenshots, browser history, and shared machines.'
                   value={postgreSqlUri}
                   variant='outlined'
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position='end'>
+                        <IconButton
+                          edge='end'
+                          aria-label={
+                            showPostgreSqlUri
+                              ? 'Hide database URI'
+                              : 'Show database URI'
+                          }
+                          onClick={() =>
+                            setShowPostgreSqlUri((visible) => !visible)
+                          }
+                        >
+                          {showPostgreSqlUri ? 'Hide' : 'Show'}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                   onChange={(e) => setPostgreSqlUri(e.target.value)}
                 />
                 <TextField
@@ -250,13 +274,7 @@ const DataRequest = () => {
                       : 'Generate preview'}
                   </Button>
                   <Button
-                    onClick={() => {
-                      setPlanResponse(null);
-                      setPreviewRows([]);
-                      setExecutionResponse(null);
-                      setExecutionConfirmed(false);
-                      setError('');
-                    }}
+                    onClick={handleClearWorkspace}
                     disabled={loadingStep.length > 0}
                     variant='outlined'
                     size='large'
@@ -356,6 +374,18 @@ const DataRequest = () => {
       </Container>
     </Box>
   );
+
+  function handleClearWorkspace() {
+    setPostgreSqlUri('');
+    setNaturalLanguageQuery('');
+    setPlanResponse(null);
+    setPreviewRows([]);
+    setExecutionResponse(null);
+    setExecutionConfirmed(false);
+    setError('');
+    setCopyMessage('');
+    setShowPostgreSqlUri(false);
+  }
 };
 
 const SchemaPreview = ({ plan, rowCountLabel }) => (

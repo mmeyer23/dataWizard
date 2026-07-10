@@ -108,11 +108,31 @@ describe('DataRequest', () => {
     expect(fetch).toHaveBeenCalledWith('/api/query/plan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        naturalLanguageQuery: 'Create one row',
-        postgreSqlUri: 'postgres://localhost/test',
-      }),
+      body: JSON.stringify({ naturalLanguageQuery: 'Create one row' }),
     });
+  });
+
+  test('masks the URI by default and allows an explicit reveal', () => {
+    render(<DataRequest />);
+    const uriInput = screen.getByLabelText(/PostgreSQL connection URI/i);
+    fireEvent.change(uriInput, {
+      target: { value: 'postgres://user:secret@localhost/test' },
+    });
+
+    expect(uriInput).toHaveAttribute('type', 'password');
+    fireEvent.click(screen.getByRole('button', { name: /Show database URI/i }));
+    expect(uriInput).toHaveAttribute('type', 'text');
+    expect(screen.getByRole('button', { name: /Hide database URI/i })).toBeInTheDocument();
+  });
+
+  test('clears the URI when the workspace is cleared', () => {
+    render(<DataRequest />);
+    const uriInput = screen.getByLabelText(/PostgreSQL connection URI/i);
+    fireEvent.change(uriInput, {
+      target: { value: 'postgres://user:secret@localhost/test' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Clear workspace/i }));
+    expect(uriInput).toHaveValue('');
   });
 
   test('generates a preview from a description without a database URI', async () => {
