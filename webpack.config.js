@@ -61,13 +61,14 @@ export default {
   plugins: [
     new HtmlWebpackPlugin({
       template: './client/index.html',
-      favicon: './public/assets/dataWizardLogo.png',
     }),
   ],
   resolve: {
     extensions: ['.jsx', '.js'],
   },
   performance: {
-    hints: false,
+    hints: 'warning',
+    maxAssetSize: 512 * 1024,
+    maxEntrypointSize: 512 * 1024,
   },
 };

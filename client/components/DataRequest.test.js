@@ -8,7 +8,7 @@ import '@testing-library/jest-dom';
 import DataRequest from './DataRequest';
 import { MAX_PREVIEW_ROWS } from './DataRequest';
 
-jest.mock('../../public/assets/dataWizardLogo.png', () => 'data-wizard-logo.png');
+jest.mock('../../public/assets/dataWizardLogo.webp', () => 'data-wizard-logo.webp');
 
 const validSql = `CREATE SCHEMA IF NOT EXISTS "test_data";
 CREATE TABLE IF NOT EXISTS "test_data"."tests" ("name" TEXT NOT NULL);
