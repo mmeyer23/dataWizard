@@ -200,17 +200,20 @@ const DataRequest = () => {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f6f8fb, #e8eef8)',
-        color: '#152238',
-        py: { xs: 3, md: 6 },
+        background:
+          'radial-gradient(circle at 15% 0%, rgba(56, 189, 248, 0.14), transparent 34%), radial-gradient(circle at 90% 15%, rgba(167, 139, 250, 0.14), transparent 30%), #08111f',
+        py: { xs: 2, md: 6 },
       }}
     >
-      <Container maxWidth='lg'>
+      <Container maxWidth='xl'>
         <Paper
           elevation={4}
           sx={{
-            p: { xs: 3, md: 5 },
-            borderRadius: 4,
+            p: { xs: 2, sm: 3, md: 5 },
+            borderRadius: { xs: 3, md: 5 },
+            background: 'rgba(17, 29, 49, 0.88)',
+            border: '1px solid rgba(148, 163, 184, 0.16)',
+            boxShadow: '0 24px 80px rgba(0, 0, 0, 0.28)',
           }}
         >
           <Stack spacing={4}>
@@ -224,33 +227,39 @@ const DataRequest = () => {
                 <img
                   src={dataWizardLogo}
                   alt='Data Wizard Logo'
-                  style={{ width: '72px', height: 'auto' }}
+                  style={{ width: '68px', height: 'auto', borderRadius: '16px' }}
                 />
                 <Box>
-                  <Typography variant='h1' sx={{ fontSize: 34, fontWeight: 800 }}>
+                  <Typography
+                    variant='overline'
+                    sx={{ color: 'primary.main', fontWeight: 800, letterSpacing: '0.14em' }}
+                  >
+                    DATA TOOLKIT / PREVIEW FIRST
+                  </Typography>
+                  <Typography variant='h1' sx={{ fontSize: { xs: 30, md: 40 }, fontWeight: 850 }}>
                     Data Wizard
                   </Typography>
-                  <Typography color='text.secondary'>
-                    Generate, inspect, approve, and execute PostgreSQL seed data.
+                  <Typography color='text.secondary' sx={{ maxWidth: 620, fontSize: { xs: 14, md: 16 } }}>
+                    Generate realistic PostgreSQL seed data, inspect every statement, and execute only when you are ready.
                   </Typography>
                 </Box>
               </Stack>
               <Chip
-                color='primary'
-                label='Preview-first database seeding'
-                sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }}
+                color='secondary'
+                variant='outlined'
+                label='Safe by design'
+                sx={{ alignSelf: { xs: 'flex-start', md: 'center' }, fontWeight: 700 }}
               />
             </Stack>
 
-            <Box component='section' aria-labelledby='request-heading'>
-              <Typography id='request-heading' variant='h2' sx={sectionHeadingSx}>
-                1. Describe the dataset
-              </Typography>
+            <Paper component='section' aria-labelledby='request-heading' variant='outlined' sx={panelSx}>
+              <StepHeading id='request-heading' number='01' title='Describe the dataset' subtitle='Start with a plain-English request. A database connection is only needed at execution time.' />
               <Stack spacing={2}>
                 <TextField
                   fullWidth
                   id='postgreSqlUri'
-                  label='PostgreSQL connection URI'
+                  label='Database URI'
+                  inputProps={{ 'aria-label': 'PostgreSQL connection URI' }}
                   type={showPostgreSqlUri ? 'text' : 'password'}
                   autoComplete='off'
                   helperText='Only needed for execution. Keep it out of screenshots, browser history, and shared machines.'
@@ -261,6 +270,8 @@ const DataRequest = () => {
                       <InputAdornment position='end'>
                         <IconButton
                           edge='end'
+                          size='small'
+                          sx={{ px: 0.75, fontSize: { xs: 11, sm: 13 } }}
                           aria-label={
                             showPostgreSqlUri
                               ? 'Hide database URI'
@@ -309,7 +320,7 @@ const DataRequest = () => {
                   </Button>
                 </Stack>
               </Stack>
-            </Box>
+            </Paper>
 
             {error.length > 0 && (
               <Alert severity='error' role='alert'>
@@ -318,10 +329,8 @@ const DataRequest = () => {
             )}
 
             {planResponse ? (
-              <Box component='section' aria-labelledby='preview-heading'>
-                <Typography id='preview-heading' variant='h2' sx={sectionHeadingSx}>
-                  2. Preview and approve
-                </Typography>
+              <Paper component='section' aria-labelledby='preview-heading' variant='outlined' sx={panelSx}>
+                <StepHeading id='preview-heading' number='02' title='Preview and approve' subtitle='Review the schema, sample rows, validation findings, and generated SQL before anything touches your database.' />
                 <Stack spacing={3}>
                   <SchemaPreview plan={planResponse.plan} rowCountLabel={rowCountLabel} />
                   <EditableRowsPreview
@@ -372,24 +381,16 @@ const DataRequest = () => {
                     </Stack>
                   </Paper>
                 </Stack>
-              </Box>
+              </Paper>
             ) : (
-              <Paper variant='outlined' sx={{ p: 3 }}>
-                <Typography variant='h2' sx={sectionHeadingSx}>
-                  2. Preview and approve
-                </Typography>
-                <Typography color='text.secondary'>
-                  Generate a preview to inspect the schema, rows, validation
-                  findings, and SQL before anything touches your database.
-                </Typography>
+              <Paper variant='outlined' sx={{ ...panelSx, borderStyle: 'dashed' }}>
+                <StepHeading number='02' title='Preview and approve' subtitle='Your generated schema, sample data, safety findings, and SQL will appear here.' />
               </Paper>
             )}
 
             {executionResponse && (
-              <Box component='section' aria-labelledby='results-heading'>
-                <Typography id='results-heading' variant='h2' sx={sectionHeadingSx}>
-                  3. Review execution results
-                </Typography>
+              <Paper component='section' aria-labelledby='results-heading' variant='outlined' sx={panelSx}>
+                <StepHeading id='results-heading' number='03' title='Review execution results' subtitle='Confirm what was inserted and keep the generated SQL available for your records.' />
                 <Alert severity='success' sx={{ mb: 2 }}>
                   Successfully inserted {executionResponse.rowCount} row
                   {executionResponse.rowCount === 1 ? '' : 's'}.
@@ -398,7 +399,7 @@ const DataRequest = () => {
                   rows={executionResponse.rows}
                   totalRowCount={executionResponse.rowCount}
                 />
-              </Box>
+              </Paper>
             )}
           </Stack>
         </Paper>
@@ -646,6 +647,24 @@ const sectionHeadingSx = {
   fontWeight: 800,
   mb: 2,
 };
+
+const panelSx = {
+  p: { xs: 2, md: 3 },
+  borderColor: 'rgba(148, 163, 184, 0.18)',
+  backgroundColor: 'rgba(15, 27, 46, 0.64)',
+};
+
+const StepHeading = ({ id, number, title, subtitle }) => (
+  <Stack direction='row' spacing={2} alignItems='flex-start' sx={{ mb: 3 }}>
+    <Chip label={number} color='primary' size='small' sx={{ mt: 0.4, fontWeight: 800 }} />
+    <Box>
+      <Typography id={id} variant='h2' sx={{ ...sectionHeadingSx, mb: 0.5, fontSize: { xs: 21, md: 25 } }}>
+        {title}
+      </Typography>
+      <Typography color='text.secondary'>{subtitle}</Typography>
+    </Box>
+  </Stack>
+);
 
 const subHeadingSx = {
   fontSize: 18,
