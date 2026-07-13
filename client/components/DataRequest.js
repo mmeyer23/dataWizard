@@ -31,6 +31,9 @@ import {
   QUERY_PLAN_ENDPOINT,
 } from '../../shared/apiContracts.js';
 
+export const MAX_PREVIEW_ROWS = 25;
+export const MAX_RESULT_ROWS = 50;
+
 const DataRequest = () => {
   const [postgreSqlUri, setPostgreSqlUri] = useState('');
   const [naturalLanguageQuery, setNaturalLanguageQuery] = useState('');
@@ -54,9 +57,13 @@ const DataRequest = () => {
     postgreSqlUri.trim().length > 0;
 
   const rowCountLabel = useMemo(() => {
-    const rowCount = planResponse?.plan?.rows?.length ?? 0;
-    return `${rowCount} sample row${rowCount === 1 ? '' : 's'}`;
-  }, [planResponse]);
+    const totalRows = planResponse?.plan?.rows?.length ?? 0;
+    const visibleRows = previewRows.length;
+    if (visibleRows < totalRows) {
+      return `Showing ${visibleRows} of ${totalRows} sample rows`;
+    }
+    return `${totalRows} sample row${totalRows === 1 ? '' : 's'}`;
+  }, [planResponse, previewRows.length]);
 
   const handleGenerate = async () => {
     setError('');
@@ -95,7 +102,7 @@ const DataRequest = () => {
       }
 
       setPlanResponse(responseData);
-      setPreviewRows(responseData.plan.rows);
+      setPreviewRows(responseData.plan.rows.slice(0, MAX_PREVIEW_ROWS));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -167,6 +174,25 @@ const DataRequest = () => {
       setCopyMessage('SQL copied to clipboard.');
     } catch {
       setCopyMessage('Copy failed. Select the SQL text manually.');
+    }
+  };
+
+  const handleDownloadSql = () => {
+    if (!planResponse?.sql) return;
+
+    try {
+      const blob = new Blob([planResponse.sql], { type: 'application/sql' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'datawizard-generated.sql';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setCopyMessage('SQL download started.');
+    } catch {
+      setCopyMessage('Download failed. Copy the SQL text manually.');
     }
   };
 
@@ -301,6 +327,7 @@ const DataRequest = () => {
                   <EditableRowsPreview
                     columns={planResponse.plan.columns}
                     rows={previewRows}
+                    totalRowCount={planResponse.plan.rows.length}
                     onChange={handlePreviewCellChange}
                   />
                   <FindingsPanel
@@ -311,6 +338,7 @@ const DataRequest = () => {
                   <SqlPreview
                     sql={planResponse.sql}
                     onCopy={handleCopySql}
+                    onDownload={handleDownloadSql}
                     copyMessage={copyMessage}
                   />
                   <Paper variant='outlined' sx={{ p: 2 }}>
@@ -366,7 +394,10 @@ const DataRequest = () => {
                   Successfully inserted {executionResponse.rowCount} row
                   {executionResponse.rowCount === 1 ? '' : 's'}.
                 </Alert>
-                <RowsResult rows={executionResponse.rows} />
+                <RowsResult
+                  rows={executionResponse.rows}
+                  totalRowCount={executionResponse.rowCount}
+                />
               </Box>
             )}
           </Stack>
@@ -398,13 +429,13 @@ const SchemaPreview = ({ plan, rowCountLabel }) => (
       <Chip label={`Table: ${plan.tableName}`} />
       <Chip label={rowCountLabel} />
     </Stack>
-    <TableContainer>
-      <Table size='small' aria-label='Schema columns preview'>
+    <TableContainer sx={{ maxHeight: 300, overflow: 'auto' }}>
+      <Table stickyHeader size='small' aria-label='Schema columns preview'>
         <TableHead>
           <TableRow>
-            <TableCell>Column</TableCell>
-            <TableCell>Type</TableCell>
-            <TableCell>Nullable</TableCell>
+            <TableCell sx={{ backgroundColor: 'background.paper' }}>Column</TableCell>
+            <TableCell sx={{ backgroundColor: 'background.paper' }}>Type</TableCell>
+            <TableCell sx={{ backgroundColor: 'background.paper' }}>Nullable</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -421,7 +452,7 @@ const SchemaPreview = ({ plan, rowCountLabel }) => (
   </Paper>
 );
 
-const EditableRowsPreview = ({ columns, rows, onChange }) => (
+const EditableRowsPreview = ({ columns, rows, totalRowCount, onChange }) => (
   <Paper variant='outlined' sx={{ p: 2 }}>
     <Typography variant='h3' sx={subHeadingSx}>
       Editable sample rows
@@ -429,13 +460,18 @@ const EditableRowsPreview = ({ columns, rows, onChange }) => (
     <Typography color='text.secondary' sx={{ mb: 2 }}>
       Use this grid to review and mark up sample values before approving the SQL.
       Regenerate the preview to apply material changes to generated SQL.
+      {totalRowCount > rows.length && (
+        <> Showing the first {rows.length} of {totalRowCount} rows.</>
+      )}
     </Typography>
-    <TableContainer>
-      <Table size='small' aria-label='Editable sample rows'>
+    <TableContainer sx={{ maxHeight: 360, overflow: 'auto' }}>
+      <Table stickyHeader size='small' aria-label='Editable sample rows'>
         <TableHead>
           <TableRow>
             {columns.map((column) => (
-              <TableCell key={column.name}>{column.name}</TableCell>
+              <TableCell key={column.name} sx={{ backgroundColor: 'background.paper' }}>
+                {column.name}
+              </TableCell>
             ))}
           </TableRow>
         </TableHead>
@@ -504,7 +540,7 @@ const FindingGroup = ({ title, values, empty }) => (
   </Box>
 );
 
-const SqlPreview = ({ sql, onCopy, copyMessage }) => (
+const SqlPreview = ({ sql, onCopy, onDownload, copyMessage }) => (
   <Paper variant='outlined' sx={{ p: 2 }}>
     <Stack
       direction={{ xs: 'column', sm: 'row' }}
@@ -519,6 +555,9 @@ const SqlPreview = ({ sql, onCopy, copyMessage }) => (
       <Button onClick={onCopy} variant='outlined'>
         Copy SQL
       </Button>
+      <Button onClick={onDownload} variant='outlined'>
+        Download SQL
+      </Button>
     </Stack>
     {copyMessage && <Alert severity='info' sx={{ mb: 2 }}>{copyMessage}</Alert>}
     <Box
@@ -528,10 +567,11 @@ const SqlPreview = ({ sql, onCopy, copyMessage }) => (
         backgroundColor: '#101828',
         color: '#e6edf3',
         borderRadius: 2,
-        overflowX: 'auto',
+        overflow: 'auto',
+        maxHeight: 360,
         p: 2,
         m: 0,
-        whiteSpace: 'pre-wrap',
+        whiteSpace: 'pre',
       }}
     >
       <HighlightedSql sql={sql} />
@@ -571,22 +611,35 @@ const HighlightedSql = ({ sql }) => {
   );
 };
 
-const RowsResult = ({ rows }) => (
-  <Box
-    component='pre'
-    aria-label='Inserted rows'
-    sx={{
-      backgroundColor: '#f8fafc',
-      border: '1px solid #d0d7de',
-      borderRadius: 2,
-      overflowX: 'auto',
-      p: 2,
-      whiteSpace: 'pre-wrap',
-    }}
-  >
-    {JSON.stringify(rows, null, 2)}
-  </Box>
-);
+const RowsResult = ({ rows, totalRowCount }) => {
+  const visibleRows = rows.slice(0, MAX_RESULT_ROWS);
+  const truncated = visibleRows.length < totalRowCount;
+
+  return (
+    <Box>
+      {truncated && (
+        <Alert severity='info' sx={{ mb: 2 }}>
+          Showing the first {visibleRows.length} of {totalRowCount} inserted rows.
+        </Alert>
+      )}
+      <Box
+        component='pre'
+        aria-label='Inserted rows'
+        sx={{
+          backgroundColor: '#f8fafc',
+          border: '1px solid #d0d7de',
+          borderRadius: 2,
+          maxHeight: 360,
+          overflow: 'auto',
+          p: 2,
+          whiteSpace: 'pre',
+        }}
+      >
+        {JSON.stringify(visibleRows, null, 2)}
+      </Box>
+    </Box>
+  );
+};
 
 const sectionHeadingSx = {
   fontSize: 24,

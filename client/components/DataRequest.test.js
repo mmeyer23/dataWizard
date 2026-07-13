@@ -6,6 +6,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import DataRequest from './DataRequest';
+import { MAX_PREVIEW_ROWS } from './DataRequest';
 
 jest.mock('../../public/assets/dataWizardLogo.png', () => 'data-wizard-logo.png');
 
@@ -52,6 +53,16 @@ const executionResponse = {
   rowCount: 1,
   warnings: [],
   validation: planResponse.validation,
+};
+
+const largePlanResponse = {
+  ...planResponse,
+  plan: {
+    ...planResponse.plan,
+    rows: Array.from({ length: MAX_PREVIEW_ROWS + 5 }, (_, index) => [
+      `Name ${index + 1}`,
+    ]),
+  },
 };
 
 describe('DataRequest', () => {
@@ -220,6 +231,37 @@ describe('DataRequest', () => {
 
     fireEvent.change(cellInput, { target: { value: 'Grace' } });
     expect(cellInput).toHaveValue('Grace');
+  });
+
+  test('bounds large row previews and explains truncation', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(largePlanResponse),
+    });
+
+    render(<DataRequest />);
+    fireEvent.change(screen.getByLabelText(/Dataset description/i), {
+      target: { value: 'Create many rows' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Generate preview/i }));
+
+    expect(
+      await screen.findByText(
+        `Showing ${MAX_PREVIEW_ROWS} of ${MAX_PREVIEW_ROWS + 5} sample rows`
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Row 25 name/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Row 26 name/i)).not.toBeInTheDocument();
+  });
+
+  test('offers copy and download actions for generated SQL', async () => {
+    render(<DataRequest />);
+    fillRequiredFields();
+    fireEvent.click(screen.getByRole('button', { name: /Generate preview/i }));
+
+    await screen.findByText(/Schema: test_data/i);
+    expect(screen.getByRole('button', { name: /Copy SQL/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Download SQL/i })).toBeInTheDocument();
   });
 
   test('copies SQL for generate-only workflows', async () => {
