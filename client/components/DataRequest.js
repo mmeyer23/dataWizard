@@ -20,7 +20,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import dataWizardLogo from '../../public/assets/dataWizardLogo.png';
+import dataWizardLogo from '../../public/assets/dataWizardLogo.webp';
 import {
   createExecuteQueryRequest,
   createQueryPlanRequest,

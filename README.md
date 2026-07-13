@@ -2,7 +2,7 @@
 
 DataWizard turns a natural-language dataset request into a reviewable PostgreSQL seed plan. It validates the model output, renders deterministic SQL, shows a preview, and executes only after explicit confirmation.
 
-![DataWizard logo](public/assets/dataWizardLogo.png)
+![DataWizard logo](public/assets/dataWizardLogo.webp)
 
 ## Why it exists
 
@@ -90,6 +90,7 @@ Always review the generated SQL and policy findings before confirming execution.
 | `npm run lint`                 | ESLint syntax and debugging checks                   |
 | `npm run format:check`         | Prettier documentation/configuration check           |
 | `npm run build`                | Production frontend bundle                           |
+| `npm run bundle:check`         | Enforce production bundle and asset budgets          |
 | `npm run verify`               | Full local quality gate                              |
 
 The PostgreSQL integration test is opt-in and uses `DATA_WIZARD_TEST_DATABASE_URL`; the normal test suite never needs real credentials.
