@@ -67,7 +67,9 @@ export default {
     extensions: ['.jsx', '.js'],
   },
   performance: {
-    hints: 'warning',
+    // `bundle:check` is the production budget gate. Suppress the dev-server
+    // overlay for advisory size warnings so `npm run demo` remains usable.
+    hints: false,
     maxAssetSize: 512 * 1024,
     maxEntrypointSize: 512 * 1024,
   },
