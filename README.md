@@ -119,6 +119,12 @@ See [docs/roadmap.md](docs/roadmap.md) for planned improvements, including riche
 
 Read [AGENTS.md](AGENTS.md), choose a focused issue branch, run `npm run verify`, and reference the issue in your commit and pull request. Keep generated bundles, coverage, and secrets out of source control.
 
+## Project history and maintenance
+
+DataWizard was originally developed collaboratively by Mason Meyer, Anna Kempel, Aaron Jacobs, and Alex Grimm.
+
+This repository is Mason Meyer’s maintained fork. It preserves that collaborative foundation while independently extending the project with a preview-first workflow, deterministic SQL validation, security hardening, automated testing and CI, local demo mode, improved documentation, and a redesigned user experience.
+
 ## License
 
 DataWizard is licensed under the ISC License. See [LICENSE](LICENSE).
