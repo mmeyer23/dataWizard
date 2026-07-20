@@ -97,7 +97,19 @@ The PostgreSQL integration test is opt-in and uses `DATA_WIZARD_TEST_DATABASE_UR
 
 ## Screenshots and demo
 
-The logo above is the current application asset. Add a short screen recording or updated screenshots to `docs/media/` when the UI workflow changes; do not include credentials or live database data.
+These screenshots use the deterministic local demo provider. They contain no credentials, connection URIs, or live database data.
+
+### Start with a plain-English request
+
+![DataWizard dataset request workflow](docs/media/datawizard-request.jpg)
+
+Describe the seed dataset you need, then generate a reviewable plan. A PostgreSQL connection is needed only if you later choose to execute approved SQL.
+
+### Review the generated plan before execution
+
+![DataWizard generated plan preview](docs/media/datawizard-preview.jpg)
+
+Inspect the proposed schema and editable sample rows before approving SQL. In demo mode, execution is disabled, making it safe to explore the workflow locally.
 
 ## Roadmap
 
